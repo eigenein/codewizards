@@ -124,6 +124,7 @@ class MyStrategy:
         # По умолчанию выбираем случайное направление.
         self.lane_type = random.choice([LaneType.TOP, LaneType.MIDDLE, LaneType.BOTTOM])
         self.way_point_index = 0
+        self.reverse = False
 
     # noinspection PyMethodMayBeStatic
     def move(self, me: Wizard, world: World, game: Game, move: Move):
@@ -136,27 +137,28 @@ class MyStrategy:
         move.skill_to_learn = self.skill_to_learn(skills)
 
         # Спасаем свою жизнь.
-        if me.life < 0.2 * me.max_life:
+        if me.life < 0.5 * me.max_life:
             # У нас осталось мало жизни. Отступаем.
             self.move_to_next_way_point(me, game, move, reverse=True)
             return
+        # Суммируем жизнь союзников и врагов в зоне обстрела.
         allies_life = sum(map(operator.attrgetter("life"), itertools.chain(
-            self.filter_units(world.minions, me.faction),
-            self.filter_units(world.wizards, me.faction),
+            self.filter_units_by_distance(me, self.filter_units_by_faction(world.minions, me.faction), me.cast_range),
+            self.filter_units_by_distance(me, self.filter_units_by_faction(world.wizards, me.faction), me.cast_range),
         )))
         enemies_life = sum(map(operator.attrgetter("life"), itertools.chain(
-            self.filter_units(world.minions, opponent_faction),
-            self.filter_units(world.wizards, opponent_faction),
+            self.filter_units_by_distance(me, self.filter_units_by_faction(world.minions, opponent_faction), me.cast_range),
+            self.filter_units_by_distance(me, self.filter_units_by_faction(world.wizards, opponent_faction), me.cast_range),
         )))
-        if enemies_life > 2.0 * allies_life:
+        if enemies_life > 1.5 * allies_life:
             # Враги сильнее, спасаемся бегством.
             self.move_to_next_way_point(me, game, move, reverse=True)
             return
         # Обнаруживаем цели.
         targets = list(itertools.chain(
-            self.filter_units(world.minions, opponent_faction),
-            self.filter_units(world.wizards, opponent_faction),
-            self.filter_units(world.buildings, opponent_faction),
+            self.filter_units_by_faction(world.minions, opponent_faction),
+            self.filter_units_by_faction(world.wizards, opponent_faction),
+            self.filter_units_by_faction(world.buildings, opponent_faction),
         ))
         if targets:
             # Просто ищем ближайшую цель.
@@ -235,11 +237,18 @@ class MyStrategy:
                 return skill
 
     @staticmethod
-    def filter_units(units: Iterable[Unit], faction: Faction):
+    def filter_units_by_faction(units: Iterable[Unit], faction: Faction):
         """
         Фильтрует юниты по фракции.
         """
         return (unit for unit in units if unit.faction == faction)
+
+    @staticmethod
+    def filter_units_by_distance(me: Wizard, units: Iterable[Unit], distance: float):
+        """
+        Фильтрует юниты по расстроянию.
+        """
+        return (unit for unit in units if me.get_distance_to_unit(unit) < distance)
 
     def move_to_next_way_point(self, me: Wizard, game: Game, move: Move, reverse=False):
         """
@@ -249,6 +258,10 @@ class MyStrategy:
         if me.x < 400.0 and me.y > 3600.0:
             # Появились возле базы.
             self.way_point_index = 0
+        if self.reverse != reverse:
+            # Изменили текущее направление движения. Скорректировать точку.
+            self.way_point_index += +1 if not reverse else -1
+            self.reverse = reverse
         if self.way_point_index <= -1 or self.way_point_index >= len(way_points):
             # Достигли крайней точки. Стоим на месте.
             return
