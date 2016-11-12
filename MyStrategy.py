@@ -135,6 +135,11 @@ class MyStrategy:
 
         # Learn some skill.
         move.skill_to_learn = self.skill_to_learn(skills)
+        # Shake sometimes to avoid complete blocking.
+        if world.tick_index % 100 == 0:
+            move.speed = random.choice([-game.wizard_backward_speed, +game.wizard_forward_speed])
+            move.strafe_speed = random.choice([-game.wizard_strafe_speed, +game.wizard_strafe_speed])
+            return
 
         # Save my own life.
         if me.life < 0.5 * me.max_life:
@@ -143,12 +148,12 @@ class MyStrategy:
             return
         # Sum up allies and enemies lives.
         allies_life = sum(map(operator.attrgetter("life"), itertools.chain(
-            self.filter_units_by_distance(me, self.filter_units_by_faction(world.minions, me.faction), me.cast_range),
-            self.filter_units_by_distance(me, self.filter_units_by_faction(world.wizards, me.faction), me.cast_range),
+            self.filter_units_by_distance(me, self.filter_units_by_faction(world.minions, me.faction), me.vision_range),
+            self.filter_units_by_distance(me, self.filter_units_by_faction(world.wizards, me.faction), me.vision_range),
         )))
         enemies_life = sum(map(operator.attrgetter("life"), itertools.chain(
-            self.filter_units_by_distance(me, self.filter_units_by_faction(world.minions, opponent_faction), me.cast_range),
-            self.filter_units_by_distance(me, self.filter_units_by_faction(world.wizards, opponent_faction), me.cast_range),
+            self.filter_units_by_distance(me, self.filter_units_by_faction(world.minions, opponent_faction), me.vision_range),
+            self.filter_units_by_distance(me, self.filter_units_by_faction(world.wizards, opponent_faction), me.vision_range),
         )))
         if enemies_life > 1.5 * allies_life:
             # Enemies life is much greater. Retreat.
