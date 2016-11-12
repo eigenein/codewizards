@@ -155,7 +155,7 @@ class MyStrategy:
             self.filter_units_by_distance(me, self.filter_units_by_faction(world.minions, opponent_faction), me.vision_range),
             self.filter_units_by_distance(me, self.filter_units_by_faction(world.wizards, opponent_faction), me.vision_range),
         )))
-        if enemies_life > 1.5 * allies_life:
+        if enemies_life > 1.2 * allies_life:
             # Enemies life is much greater. Retreat.
             self.move_to_next_way_point(me, game, move, reverse=True)
             return
