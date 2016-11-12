@@ -5,6 +5,7 @@ import itertools
 import math
 import operator
 import random
+import time
 
 from typing import Iterable, Set
 
@@ -121,6 +122,7 @@ class MyStrategy:
     }
 
     def __init__(self):
+        random.seed(time.time())
         # Choose random lane by default.
         self.lane_type = random.choice([LaneType.TOP, LaneType.MIDDLE, LaneType.BOTTOM])
         self.way_point_index = 0
@@ -159,16 +161,16 @@ class MyStrategy:
             # Enemies life is much greater. Retreat.
             self.move_to_next_way_point(me, game, move, reverse=True)
             return
-        # Discover targets.
-        targets = list(itertools.chain(
+        # Discover targets within cast range.
+        targets = list(self.filter_units_by_distance(me, itertools.chain(
             self.filter_units_by_faction(world.minions, opponent_faction),
             self.filter_units_by_faction(world.wizards, opponent_faction),
             self.filter_units_by_faction(world.buildings, opponent_faction),
-        ))
+        ), me.cast_range))
         if targets:
-            # Just look for the nearest target.
-            target = min(targets, key=(lambda target_: me.get_distance_to_unit(target_)))
-            action_type, min_cast_distance = self.check_attack_distance(me, game, skills, target)
+            # Just look for the weakest target.
+            target = min(targets, key=operator.attrgetter("life"))
+            action_type, min_cast_distance = self.get_action(me, game, skills, target)
             is_oriented, cast_angle = self.is_oriented_to_unit(me, game, target)
             if action_type != ActionType.NONE:
                 # We can cast something.
@@ -209,9 +211,9 @@ class MyStrategy:
         return False, None
 
     @staticmethod
-    def check_attack_distance(me: Wizard, game: Game, skills: Set[SkillType], unit: CircularUnit) -> (ActionType, float):
+    def get_action(me: Wizard, game: Game, skills: Set[SkillType], unit: CircularUnit) -> (ActionType, float):
         """
-        Checks distance to the unit and returns action type if possible.
+        Checks distance to the unit and returns appropriate action type if possible.
         """
         distance_to_unit = me.get_distance_to_unit(unit)
         min_cast_distance = distance_to_unit - unit.radius
@@ -260,9 +262,12 @@ class MyStrategy:
         # Move towards the way point.
         x, y = way_points[self.way_point_index]
         move.turn = me.get_angle_to(x, y)
+        if reverse:
+            # Move backwards for reverse.
+            move.turn -= math.copysign(math.pi, move.turn)
         if abs(move.turn) < game.staff_sector / 2.0:
-            # Turn is finished. We can move.
-            move.speed = game.wizard_forward_speed
+            # Turn is finished. We can move. Move backwards for reverse.
+            move.speed = game.wizard_forward_speed if not reverse else -game.wizard_backward_speed
         # Check if we reached the destination.
         if me.get_distance_to(x, y) < me.radius:
             # We reached the destination. Switch the next way point.
