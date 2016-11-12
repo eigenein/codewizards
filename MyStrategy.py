@@ -144,7 +144,7 @@ class MyStrategy:
             return
 
         # Save my own life.
-        if me.life < 0.5 * me.max_life:
+        if me.life < 0.75 * me.max_life:
             # We're unhealthy. Retreat.
             self.move_to_next_way_point(me, game, move, reverse=True)
             return
