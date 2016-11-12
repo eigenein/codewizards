@@ -136,7 +136,7 @@ class MyStrategy:
         # Learn some skill.
         move.skill_to_learn = self.skill_to_learn(skills)
         # Shake sometimes to avoid complete blocking.
-        if world.tick_index % 100 == 0:
+        if world.tick_index % 50 == 0:
             move.speed = random.choice([-game.wizard_backward_speed, +game.wizard_forward_speed])
             move.strafe_speed = random.choice([-game.wizard_strafe_speed, +game.wizard_strafe_speed])
             return
