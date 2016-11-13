@@ -141,27 +141,40 @@ class MyStrategy:
             move.strafe_speed = random.choice([-game.wizard_strafe_speed, +game.wizard_strafe_speed])
             return
 
-        # Strafe speed positive direction.
-        strafe_x, strafe_y = -math.sin(me.angle), math.cos(me.angle)
+        # Sum up enemies lives within their attack ranges that are oriented to me.
+        my_diameter = 2.0 * me.radius
+        staff_angle = game.staff_range / 2.0
+        enemies_life = (
+            sum(
+                unit.life
+                for unit in self.filter_units(me, opponent_faction, me.cast_range + my_diameter, world.wizards)
+                if abs(unit.get_angle_to_unit(me)) < staff_angle
+            ) +
+            sum(
+                unit.life
+                for unit in self.filter_units(me, opponent_faction, game.fetish_blowdart_attack_range + my_diameter, world.minions)
+                if abs(unit.get_angle_to_unit(me)) < staff_angle
+            )
+        )
+        # And check if there is an enemy building nearby.
+        is_building_nearby = any(self.filter_units(me, opponent_faction, game.guardian_tower_attack_range + my_diameter, world.buildings))
 
         # Check if I'm healthy.
-        enemies_life = sum(
-            unit.life
-            for unit in self.filter_units(me, opponent_faction, me.vision_range, world.minions, world.wizards)
-            if self.is_in_front_of_me(me.x, me.y, strafe_x, strafe_y, unit.x, unit.y)
-        )
-        if me.life < 0.5 * me.max_life and enemies_life > 0.0:
-            # Retreat if I'm unhealthy and there is an enemy in front of me.
+        if me.life < 0.5 * me.max_life and (enemies_life > 0.0 or is_building_nearby):
+            # Retreat if I'm unhealthy and there is an enemy nearby.
             self.move_to_next_way_point(me, game, move, reverse=True)
             return
 
-        # Compare lives.
-        allies_life = sum(
+        # Strafe speed positive direction.
+        strafe_x, strafe_y = -math.sin(me.angle), math.cos(me.angle)
+        # Sum up allies lives in front of me.
+        allies_life = me.life + sum(
             unit.life
             for unit in self.filter_units(me, me.faction, me.vision_range, world.minions, world.wizards, world.buildings)
-            if self.is_in_front_of_me(me.x, me.y, strafe_x, strafe_y, unit.x, unit.y)
+            if unit.id != me.id and self.is_in_front_of_me(me.x, me.y, strafe_x, strafe_y, unit.x, unit.y)
         )
-        if enemies_life > allies_life:
+        # Compare lives of attacking units. Let's be a little bit risky.
+        if enemies_life > 1.25 * allies_life:
             # Retreat if enemies in front of me are healthier.
             self.move_to_next_way_point(me, game, move, reverse=True)
             return
