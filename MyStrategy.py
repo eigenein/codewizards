@@ -7,10 +7,9 @@ import operator
 import random
 import time
 
-from typing import Iterable, Set
+from typing import Optional, Set, Tuple
 
 from model.ActionType import ActionType
-from model.BuildingType import BuildingType
 from model.CircularUnit import CircularUnit
 from model.Faction import Faction
 from model.Game import Game
@@ -18,7 +17,6 @@ from model.LaneType import LaneType
 from model.Move import Move
 from model.Player import Player
 from model.SkillType import SkillType
-from model.Unit import Unit
 from model.Wizard import Wizard
 from model.World import World
 
@@ -69,8 +67,6 @@ class MyStrategy:
             (200.0, 1400.0),
             (200.0, 1000.0),
             (200.0, 600.0),
-            # Don't need this way point.
-            # (200.0, 200.0),
             # Move right.
             (600.0, 200.0),
             (1000.0, 200.0),
@@ -78,10 +74,6 @@ class MyStrategy:
             (1800.0, 200.0),
             (2200.0, 200.0),
             (2600.0, 200.0),
-            # These are dangerous.
-            # (3000.0, 200.0),
-            # (3400.0, 200.0),
-            # (3800.0, 200.0),
         ],
         LaneType.MIDDLE: [
             # Move around the base.
@@ -94,10 +86,6 @@ class MyStrategy:
             (2200.0, 1800.0),
             (2600.0, 1400.0),
             (3000.0, 1000.0),
-            # These are dangerous.
-            # (3400.0, 600.0),
-            # (3400.0, 200.0),
-            # (3800.0, 200.0),
         ],
         LaneType.BOTTOM: [
             # Move right.
@@ -109,8 +97,6 @@ class MyStrategy:
             (2600.0, 3800.0),
             (3000.0, 3800.0),
             (3400.0, 3800.0),
-            # Don't need this way point.
-            # (3800.0, 3800.0),
             # Move upwards.
             (3800.0, 3400.0),
             (3800.0, 3000.0),
@@ -118,10 +104,6 @@ class MyStrategy:
             (3800.0, 2200.0),
             (3800.0, 1800.0),
             (3800.0, 1400.0),
-            # These are dangerous.
-            # (3800.0, 1000.0),
-            # (3800.0, 600.0),
-            # (3800.0, 200.0),
         ],
     }
 
@@ -134,44 +116,63 @@ class MyStrategy:
 
     # noinspection PyMethodMayBeStatic
     def move(self, me: Wizard, world: World, game: Game, move: Move):
-        # First, common things.
+        # First, initialize some common things.
         my_player = world.get_my_player()  # type: Player
         opponent_faction = self.opponent_faction_to(my_player.faction)
         skills = set(me.skills)
 
         # Learn some skill.
         move.skill_to_learn = self.skill_to_learn(skills)
+
+        # Attack an enemy unit if possible.
+        for target_lists in ([world.wizards], [world.minions, world.buildings]):
+            # Look for the weakest wizard, then for everyone else.
+            targets = list(self.filter_units(me, opponent_faction, me.cast_range, *target_lists))
+            if targets:
+                target = min(targets, key=operator.attrgetter("life"))
+                is_attacking = self.attack(me, game, move, skills, target)
+                break
+        else:
+            is_attacking = False
+
         # Shake sometimes to avoid complete blocking.
         if world.tick_index % 25 == 0:
             move.speed = random.choice([-game.wizard_backward_speed, +game.wizard_forward_speed])
             move.strafe_speed = random.choice([-game.wizard_strafe_speed, +game.wizard_strafe_speed])
             return
 
-        # Check if I'm unhealthy.
-        enemies_life = sum(unit.life for unit in self.filter_units(me, opponent_faction, me.vision_range, world.minions, world.wizards))
-        if me.life < 0.5 * me.max_life:
-            # Make sure we're attacking enemies while retreating.
-            self.retreat_attack(me, world, game, move, opponent_faction, skills)
-            if enemies_life > 0.0:
-                # Move backwards only if there is an enemy nearby.
-                self.move_to_next_way_point(me, game, move, reverse=True)
-            return
-        # Compare lives.
-        allies_life = sum(unit.life for unit in self.filter_units(me, me.faction, me.vision_range, world.minions, world.wizards))
-        if enemies_life > 1.2 * allies_life:
-            # Enemies life is much greater. Retreat.
-            self.retreat_attack(me, world, game, move, opponent_faction, skills)
+        # Strafe speed positive direction.
+        strafe_x, strafe_y = -math.sin(me.angle), math.cos(me.angle)
+
+        # Check if I'm healthy.
+        enemies_life = sum(
+            unit.life
+            for unit in self.filter_units(me, opponent_faction, me.vision_range, world.minions, world.wizards)
+            if self.is_in_front_of_me(me.x, me.y, strafe_x, strafe_y, unit.x, unit.y)
+        )
+        if me.life < 0.5 * me.max_life and enemies_life > 0.0:
+            # Retreat if I'm unhealthy and there is an enemy in front of me.
             self.move_to_next_way_point(me, game, move, reverse=True)
             return
-        # Look for the weakest wizard, then for everyone else.
-        for target_lists in ([world.wizards], [world.minions, world.buildings]):
-            targets = list(self.filter_units(me, opponent_faction, me.cast_range, *target_lists))
-            if targets:
-                target = min(targets, key=operator.attrgetter("life"))
-                if self.move_attack(me, game, move, skills, target):
-                    return
-        # Just move straight.
-        self.move_to_next_way_point(me, game, move)
+
+        # Compare lives.
+        allies_life = sum(
+            unit.life
+            for unit in self.filter_units(me, me.faction, me.vision_range, world.minions, world.wizards, world.buildings)
+            if self.is_in_front_of_me(me.x, me.y, strafe_x, strafe_y, unit.x, unit.y)
+        )
+        if enemies_life > allies_life:
+            # Retreat if enemies in front of me are healthier.
+            self.move_to_next_way_point(me, game, move, reverse=True)
+            return
+
+        # If not attacking, just move straight to the next way point.
+        if is_attacking:
+            return
+        way_point = self.move_to_next_way_point(me, game, move)
+        if way_point is not None:
+            # noinspection PyArgumentList
+            move.turn = me.get_angle_to(*way_point)
 
     @staticmethod
     def opponent_faction_to(faction: Faction):
@@ -216,9 +217,9 @@ class MyStrategy:
             return ActionType.MAGIC_MISSILE, min_cast_distance
         return ActionType.NONE, min_cast_distance
 
-    def move_attack(self, me: Wizard, game: Game, move: Move, skills: Set[SkillType], unit: CircularUnit):
+    def attack(self, me: Wizard, game: Game, move: Move, skills: Set[SkillType], unit: CircularUnit):
         """
-        Attacks the unit or moves to attack it.
+        Attacks the unit or turns around to attack it.
         """
         action_type, min_cast_distance = self.get_action(me, game, skills, unit)
         if action_type == ActionType.NONE:
@@ -234,22 +235,6 @@ class MyStrategy:
         # Turn around to the enemy.
         move.turn = me.get_angle_to_unit(unit)
         return True
-
-    def retreat_attack(self, me: Wizard, world: World, game: Game, move: Move, faction: Faction, skills: Set[SkillType]):
-        """
-        Tries to attack anyone without need to move.
-        """
-        for unit in self.filter_units(me, faction, me.cast_range, world.minions, world.buildings, world.wizards):
-            action_type, min_cast_distance = self.get_action(me, game, skills, unit)
-            if action_type == ActionType.NONE:
-                continue
-            is_oriented, cast_angle = self.is_oriented_to_unit(me, game, unit)
-            if not is_oriented:
-                continue
-            move.cast_angle = cast_angle
-            move.action = action_type
-            move.min_cast_distance = min_cast_distance
-            return
 
     @staticmethod
     def skill_to_learn(skills: Set[SkillType]) -> SkillType:
@@ -269,7 +254,7 @@ class MyStrategy:
             if unit.faction == faction and me.get_distance_to_unit(unit) < distance
         )
 
-    def move_to_next_way_point(self, me: Wizard, game: Game, move: Move, reverse=False):
+    def move_to_next_way_point(self, me: Wizard, game: Game, move: Move, reverse=False) -> Optional[Tuple[float, float]]:
         way_points = MyStrategy.WAY_POINTS[self.lane_type]
         if me.x < 400.0 and me.y > 3600.0:
             # We appeared near the base.
@@ -283,14 +268,41 @@ class MyStrategy:
             return
         # Move towards the way point.
         x, y = way_points[self.way_point_index]
-        move.turn = me.get_angle_to(x, y)
-        if reverse:
-            # Move backwards for reverse.
-            move.turn -= math.copysign(math.pi, move.turn)
-        if abs(move.turn) < game.staff_sector / 2.0:
-            # Turn is finished. We can move. Move backwards for reverse.
-            move.speed = game.wizard_forward_speed if not reverse else -game.wizard_backward_speed
+        self.move_to(me, game, move, x, y)
         # Check if we reached the destination.
         if me.get_distance_to(x, y) < me.radius:
             # We reached the destination. Switch the next way point.
             self.way_point_index = self.way_point_index + 1 if not reverse else self.way_point_index - 1
+        return x, y
+
+    @staticmethod
+    def move_to(me: Wizard, game: Game, move: Move, x: float, y: float):
+        """
+        Moves wizard towards the given direction.
+        """
+        direction_x, direction_y = x - me.x, y - me.y
+        # Normalize the destination vector.
+        distance = math.sqrt(direction_x * direction_x + direction_y * direction_y)
+        if abs(distance) < 1.0:
+            return
+        direction_x /= distance
+        direction_y /= distance
+        # Wizard's turn vector.
+        turn_x, turn_y = math.cos(me.angle), math.sin(me.angle)
+        # Project the destination vector onto the speed vector.
+        speed = direction_x * turn_x + direction_y * turn_y
+        # Project the destination vector onto the strafe speed vector.
+        strafe_speed = direction_x * (-turn_y) + direction_y * turn_x
+        # Finally, set up the movement.
+        if speed > 0.0:
+            max_speed = max(game.wizard_forward_speed, game.wizard_strafe_speed)
+            move.speed = speed * max_speed
+            move.strafe_speed = strafe_speed * max_speed
+        else:
+            max_speed = max(game.wizard_backward_speed, game.wizard_strafe_speed)
+            move.speed = speed * max_speed
+            move.strafe_speed = strafe_speed * max_speed
+
+    @staticmethod
+    def is_in_front_of_me(my_x: float, my_y: float, strafe_x: float, strafe_y: float, x: float, y: float) -> bool:
+        return strafe_x * (y - my_y) - strafe_y * (x - my_x) < 0.0
