@@ -110,21 +110,12 @@ class MyStrategy:
 
     def __init__(self):
         random.seed(time.time() + id(self))
-        self.initial_sleep_ticks = random.randint(200, 500)
-        self.lane_type = None
+        self.lane_type = random.choice([LaneType.TOP, LaneType.MIDDLE, LaneType.BOTTOM])
         self.way_point_index = 0
         self.reverse = False
 
     # noinspection PyMethodMayBeStatic
     def move(self, me: Wizard, world: World, game: Game, move: Move):
-        # Let other wizards to go away from the initial tile.
-        if world.tick_index < self.initial_sleep_ticks:
-            return
-
-        # Choose the lane.
-        if self.lane_type is None:
-            self.lane_type = self.choose_lane(me, world)
-
         # First, initialize some common things.
         opponent_faction = self.opponent_faction_to(me.faction)
         skills = set(me.skills)
@@ -355,15 +346,3 @@ class MyStrategy:
             force = math.sqrt(force_x * force_x + force_y * force_y)
             self.move_to(me, game, move, me.x + me.radius * force_x / force, me.y + me.radius * force_y / force)
         return is_activated
-
-    @staticmethod
-    def choose_lane(me: Wizard, world: World) -> LaneType:
-        # noinspection PyArgumentList
-        wizards_per_lane = collections.Counter([
-            LaneType.TOP if wizard.x < 400.0 else LaneType.BOTTOM if wizard.y > 3600.0 else LaneType.MIDDLE
-            for wizard in world.wizards
-            # If wizard has left the initial tile.
-            if wizard.faction == me.faction and wizard.id != me.id and (wizard.x > 400.0 or wizard.y < 3600.0)
-        ])
-        # Choose lane with minimum wizards.
-        return min([LaneType.TOP, LaneType.MIDDLE, LaneType.BOTTOM], key=wizards_per_lane.__getitem__)
