@@ -24,34 +24,34 @@ from model.World import World
 class MyStrategy:
     # Порядок изучения навыков.
     SKILL_ORDER = [
-        SkillType.RANGE_BONUS_PASSIVE_1,
-        SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_1,
         SkillType.STAFF_DAMAGE_BONUS_PASSIVE_1,
-        SkillType.MOVEMENT_BONUS_FACTOR_PASSIVE_1,
-        SkillType.MAGICAL_DAMAGE_ABSORPTION_PASSIVE_1,
-
-        SkillType.RANGE_BONUS_AURA_1,
-        SkillType.MAGICAL_DAMAGE_BONUS_AURA_1,
         SkillType.STAFF_DAMAGE_BONUS_AURA_1,
-        SkillType.MOVEMENT_BONUS_FACTOR_AURA_1,
-        SkillType.MAGICAL_DAMAGE_ABSORPTION_AURA_1,
-
-        SkillType.RANGE_BONUS_PASSIVE_2,
-        SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_2,
         SkillType.STAFF_DAMAGE_BONUS_PASSIVE_2,
-        SkillType.MOVEMENT_BONUS_FACTOR_PASSIVE_2,
-        SkillType.MAGICAL_DAMAGE_ABSORPTION_PASSIVE_2,
-
-        SkillType.RANGE_BONUS_AURA_2,
-        SkillType.MAGICAL_DAMAGE_BONUS_AURA_2,
         SkillType.STAFF_DAMAGE_BONUS_AURA_2,
-        SkillType.MOVEMENT_BONUS_FACTOR_AURA_2,
-        SkillType.MAGICAL_DAMAGE_ABSORPTION_AURA_2,
-
-        SkillType.ADVANCED_MAGIC_MISSILE,
-        SkillType.FROST_BOLT,
         SkillType.FIREBALL,
+
+        SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_1,
+        SkillType.MAGICAL_DAMAGE_BONUS_AURA_1,
+        SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_2,
+        SkillType.MAGICAL_DAMAGE_BONUS_AURA_2,
+        SkillType.FROST_BOLT,
+
+        SkillType.RANGE_BONUS_PASSIVE_1,
+        SkillType.RANGE_BONUS_AURA_1,
+        SkillType.RANGE_BONUS_PASSIVE_2,
+        SkillType.RANGE_BONUS_AURA_2,
+        SkillType.ADVANCED_MAGIC_MISSILE,
+
+        SkillType.MOVEMENT_BONUS_FACTOR_PASSIVE_1,
+        SkillType.MOVEMENT_BONUS_FACTOR_AURA_1,
+        SkillType.MOVEMENT_BONUS_FACTOR_PASSIVE_2,
+        SkillType.MOVEMENT_BONUS_FACTOR_AURA_2,
         SkillType.HASTE,
+
+        SkillType.MAGICAL_DAMAGE_ABSORPTION_PASSIVE_1,
+        SkillType.MAGICAL_DAMAGE_ABSORPTION_AURA_1,
+        SkillType.MAGICAL_DAMAGE_ABSORPTION_PASSIVE_2,
+        SkillType.MAGICAL_DAMAGE_ABSORPTION_AURA_2,
         SkillType.SHIELD,
     ]
 
@@ -123,6 +123,8 @@ class MyStrategy:
 
         # Learn some skill.
         move.skill_to_learn = self.skill_to_learn(skills)
+        # Apply some skill.
+        move.status_target_id = me.id
 
         # Attack an enemy unit if possible.
         for target_lists in ([world.wizards], [world.minions, world.buildings]):
@@ -130,7 +132,8 @@ class MyStrategy:
             targets = list(self.filter_units(me, opponent_faction, me.cast_range, *target_lists))
             if targets:
                 target = min(targets, key=operator.attrgetter("life"))
-                is_attacking = self.attack(me, game, move, skills, target)
+                is_group = len(targets) > 1  # Let's make it simple for the first time.
+                is_attacking = self.attack(me, game, move, skills, target, is_group)
                 break
         else:
             is_attacking = False
@@ -210,7 +213,7 @@ class MyStrategy:
         return False, None
 
     @staticmethod
-    def get_action(me: Wizard, game: Game, skills: Set[SkillType], unit: CircularUnit) -> (ActionType, float):
+    def get_action(me: Wizard, game: Game, skills: Set[SkillType], unit: CircularUnit, is_group: bool) -> (ActionType, float):
         """
         Checks distance to the unit and returns appropriate action type if possible.
         """
@@ -220,7 +223,12 @@ class MyStrategy:
             return ActionType.STAFF, min_cast_distance
         if distance_to_unit > me.cast_range:
             return ActionType.NONE, min_cast_distance
-        if SkillType.FIREBALL in skills and me.mana > game.fireball_manacost:
+        if (
+            SkillType.FIREBALL in skills and
+            is_group and
+            me.mana > game.fireball_manacost and
+            distance_to_unit > game.fireball_explosion_min_damage_range
+        ):
             return ActionType.FIREBALL, min_cast_distance
         if SkillType.FROST_BOLT in skills and me.mana > game.frost_bolt_manacost:
             return ActionType.FROST_BOLT, min_cast_distance
@@ -228,11 +236,11 @@ class MyStrategy:
             return ActionType.MAGIC_MISSILE, min_cast_distance
         return ActionType.NONE, min_cast_distance
 
-    def attack(self, me: Wizard, game: Game, move: Move, skills: Set[SkillType], unit: CircularUnit):
+    def attack(self, me: Wizard, game: Game, move: Move, skills: Set[SkillType], unit: CircularUnit, is_group: bool):
         """
         Attacks the unit or turns around to attack it.
         """
-        action_type, min_cast_distance = self.get_action(me, game, skills, unit)
+        action_type, min_cast_distance = self.get_action(me, game, skills, unit, is_group)
         if action_type == ActionType.NONE:
             return False
         # We can cast something.
