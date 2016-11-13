@@ -108,7 +108,7 @@ class MyStrategy:
     }
 
     def __init__(self):
-        random.seed(time.time())
+        random.seed(time.time() + id(self))
         # Choose random lane by default.
         self.lane_type = random.choice([LaneType.TOP, LaneType.MIDDLE, LaneType.BOTTOM])
         self.way_point_index = 0
