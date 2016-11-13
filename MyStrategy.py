@@ -135,10 +135,8 @@ class MyStrategy:
         else:
             is_attacking = False
 
-        # Shake sometimes to avoid complete blocking.
-        if world.tick_index % 25 == 0:
-            move.speed = random.choice([-game.wizard_backward_speed, +game.wizard_forward_speed])
-            move.strafe_speed = random.choice([-game.wizard_strafe_speed, +game.wizard_strafe_speed])
+        # Try to avoid collisions.
+        if self.avoid_collisions(me, game, world, move, opponent_faction):
             return
 
         # Sum up enemies lives within their attack ranges that are oriented to me.
@@ -319,3 +317,25 @@ class MyStrategy:
     @staticmethod
     def is_in_front_of_me(my_x: float, my_y: float, strafe_x: float, strafe_y: float, x: float, y: float) -> bool:
         return strafe_x * (y - my_y) - strafe_y * (x - my_x) < 0.0
+
+    def avoid_collisions(self, me: Wizard, game: Game, world: World, move: Move, opponent_faction: Faction):
+        # Let's imagine that there is a kind of spring between me and each other unit.
+        spring_length = me.radius / 2.0
+        k = 1000.0
+        # Sum up all forces.
+        force_x = force_y = 0.0
+        is_activated = False
+        for unit in itertools.chain(world.wizards, world.buildings):
+            if unit.id == me.id or unit.faction == opponent_faction:
+                continue
+            distance = me.get_distance_to_unit(unit)
+            true_distance = distance - me.radius - unit.radius
+            if true_distance < spring_length:
+                force_x += k * (spring_length - true_distance) * (me.x - unit.x) / distance
+                force_y += k * (spring_length - true_distance) * (me.y - unit.y) / distance
+                is_activated = True
+        # Let's move.
+        if is_activated:
+            force = math.sqrt(force_x * force_x + force_y * force_y)
+            self.move_to(me, game, move, me.x + me.radius * force_x / force, me.y + me.radius * force_y / force)
+        return is_activated
