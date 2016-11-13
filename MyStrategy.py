@@ -69,7 +69,8 @@ class MyStrategy:
             (200.0, 1400.0),
             (200.0, 1000.0),
             (200.0, 600.0),
-            (200.0, 200.0),
+            # Don't need this way point.
+            # (200.0, 200.0),
             # Move right.
             (600.0, 200.0),
             (1000.0, 200.0),
@@ -77,9 +78,10 @@ class MyStrategy:
             (1800.0, 200.0),
             (2200.0, 200.0),
             (2600.0, 200.0),
-            (3000.0, 200.0),
-            (3400.0, 200.0),
-            (3800.0, 200.0),
+            # These are dangerous.
+            # (3000.0, 200.0),
+            # (3400.0, 200.0),
+            # (3800.0, 200.0),
         ],
         LaneType.MIDDLE: [
             # Move around the base.
@@ -92,10 +94,10 @@ class MyStrategy:
             (2200.0, 1800.0),
             (2600.0, 1400.0),
             (3000.0, 1000.0),
-            (3400.0, 600.0),
-            # Move around the base.
-            (3400.0, 200.0),
-            (3800.0, 200.0),
+            # These are dangerous.
+            # (3400.0, 600.0),
+            # (3400.0, 200.0),
+            # (3800.0, 200.0),
         ],
         LaneType.BOTTOM: [
             # Move right.
@@ -107,7 +109,8 @@ class MyStrategy:
             (2600.0, 3800.0),
             (3000.0, 3800.0),
             (3400.0, 3800.0),
-            (3800.0, 3800.0),
+            # Don't need this way point.
+            # (3800.0, 3800.0),
             # Move upwards.
             (3800.0, 3400.0),
             (3800.0, 3000.0),
@@ -115,9 +118,10 @@ class MyStrategy:
             (3800.0, 2200.0),
             (3800.0, 1800.0),
             (3800.0, 1400.0),
-            (3800.0, 1000.0),
-            (3800.0, 600.0),
-            (3800.0, 200.0),
+            # These are dangerous.
+            # (3800.0, 1000.0),
+            # (3800.0, 600.0),
+            # (3800.0, 200.0),
         ],
     }
 
@@ -143,46 +147,29 @@ class MyStrategy:
             move.strafe_speed = random.choice([-game.wizard_strafe_speed, +game.wizard_strafe_speed])
             return
 
-        # Save my own life.
+        # Check if I'm unhealthy.
+        enemies_life = sum(unit.life for unit in self.filter_units(me, opponent_faction, me.vision_range, world.minions, world.wizards))
         if me.life < 0.5 * me.max_life:
-            # We're unhealthy. Retreat.
-            self.move_to_next_way_point(me, game, move, reverse=True)
+            # Make sure we're attacking enemies while retreating.
+            self.retreat_attack(me, world, game, move, opponent_faction, skills)
+            if enemies_life > 0.0:
+                # Move backwards only if there is an enemy nearby.
+                self.move_to_next_way_point(me, game, move, reverse=True)
             return
-        # Sum up allies and enemies lives.
-        allies_life = sum(map(operator.attrgetter("life"), itertools.chain(
-            self.filter_units_by_distance(me, self.filter_units_by_faction(world.minions, me.faction), me.vision_range),
-            self.filter_units_by_distance(me, self.filter_units_by_faction(world.wizards, me.faction), me.vision_range),
-        )))
-        enemies_life = sum(map(operator.attrgetter("life"), itertools.chain(
-            self.filter_units_by_distance(me, self.filter_units_by_faction(world.minions, opponent_faction), me.vision_range),
-            self.filter_units_by_distance(me, self.filter_units_by_faction(world.wizards, opponent_faction), me.vision_range),
-        )))
+        # Compare lives.
+        allies_life = sum(unit.life for unit in self.filter_units(me, me.faction, me.vision_range, world.minions, world.wizards))
         if enemies_life > 1.2 * allies_life:
             # Enemies life is much greater. Retreat.
+            self.retreat_attack(me, world, game, move, opponent_faction, skills)
             self.move_to_next_way_point(me, game, move, reverse=True)
             return
-        # Discover targets within cast range.
-        targets = list(self.filter_units_by_distance(me, itertools.chain(
-            self.filter_units_by_faction(world.minions, opponent_faction),
-            self.filter_units_by_faction(world.wizards, opponent_faction),
-            self.filter_units_by_faction(world.buildings, opponent_faction),
-        ), me.cast_range))
-        if targets:
-            # Just look for the weakest target.
-            target = min(targets, key=operator.attrgetter("life"))
-            action_type, min_cast_distance = self.get_action(me, game, skills, target)
-            is_oriented, cast_angle = self.is_oriented_to_unit(me, game, target)
-            if action_type != ActionType.NONE:
-                # We can cast something.
-                if is_oriented:
-                    # Attack!
-                    move.cast_angle = cast_angle
-                    move.action = action_type
-                    move.min_cast_distance = min_cast_distance
+        # Look for the weakest wizard, then for everyone else.
+        for target_lists in ([world.wizards], [world.minions, world.buildings]):
+            targets = list(self.filter_units(me, opponent_faction, me.cast_range, *target_lists))
+            if targets:
+                target = min(targets, key=operator.attrgetter("life"))
+                if self.move_attack(me, game, move, skills, target):
                     return
-                # Turn around to the enemy.
-                move.turn = me.get_angle_to_unit(target)
-                return
         # Just move straight.
         self.move_to_next_way_point(me, game, move)
 
@@ -229,6 +216,41 @@ class MyStrategy:
             return ActionType.MAGIC_MISSILE, min_cast_distance
         return ActionType.NONE, min_cast_distance
 
+    def move_attack(self, me: Wizard, game: Game, move: Move, skills: Set[SkillType], unit: CircularUnit):
+        """
+        Attacks the unit or moves to attack it.
+        """
+        action_type, min_cast_distance = self.get_action(me, game, skills, unit)
+        if action_type == ActionType.NONE:
+            return False
+        # We can cast something.
+        is_oriented, cast_angle = self.is_oriented_to_unit(me, game, unit)
+        if is_oriented:
+            # Attack!
+            move.cast_angle = cast_angle
+            move.action = action_type
+            move.min_cast_distance = min_cast_distance
+            return True
+        # Turn around to the enemy.
+        move.turn = me.get_angle_to_unit(unit)
+        return True
+
+    def retreat_attack(self, me: Wizard, world: World, game: Game, move: Move, faction: Faction, skills: Set[SkillType]):
+        """
+        Tries to attack anyone without need to move.
+        """
+        for unit in self.filter_units(me, faction, me.cast_range, world.minions, world.buildings, world.wizards):
+            action_type, min_cast_distance = self.get_action(me, game, skills, unit)
+            if action_type == ActionType.NONE:
+                continue
+            is_oriented, cast_angle = self.is_oriented_to_unit(me, game, unit)
+            if not is_oriented:
+                continue
+            move.cast_angle = cast_angle
+            move.action = action_type
+            move.min_cast_distance = min_cast_distance
+            return
+
     @staticmethod
     def skill_to_learn(skills: Set[SkillType]) -> SkillType:
         """
@@ -240,12 +262,12 @@ class MyStrategy:
                 return skill
 
     @staticmethod
-    def filter_units_by_faction(units: Iterable[Unit], faction: Faction):
-        return (unit for unit in units if unit.faction == faction)
-
-    @staticmethod
-    def filter_units_by_distance(me: Wizard, units: Iterable[Unit], distance: float):
-        return (unit for unit in units if me.get_distance_to_unit(unit) < distance)
+    def filter_units(me: Wizard, faction: Faction, distance: float, *iterables):
+        return (
+            unit
+            for unit in itertools.chain(*iterables)
+            if unit.faction == faction and me.get_distance_to_unit(unit) < distance
+        )
 
     def move_to_next_way_point(self, me: Wizard, game: Game, move: Move, reverse=False):
         way_points = MyStrategy.WAY_POINTS[self.lane_type]
