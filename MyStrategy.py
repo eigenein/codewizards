@@ -276,7 +276,9 @@ class MyStrategy:
         way_points = MyStrategy.WAY_POINTS[self.lane_type]
         if me.x < 400.0 and me.y > 3600.0:
             # We appeared near the base.
-            self.way_point_index = 0
+            if self.way_point_index != 0:
+                self.lane_type = random.choice([LaneType.TOP, LaneType.MIDDLE, LaneType.BOTTOM])
+                self.way_point_index = 0
         if self.reverse != reverse:
             # Moving direction has been changed. Fix the way point.
             self.way_point_index += +1 if not reverse else -1
