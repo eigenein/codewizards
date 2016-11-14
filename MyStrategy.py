@@ -89,7 +89,7 @@ class MyStrategy:
             if unit.faction == attack_faction and me.get_distance_to_unit(unit) < me.vision_range
         ]
         if targets:
-            target = min(targets, key=(lambda unit: me.get_distance_to_unit(unit)))
+            target = min(targets, key=(lambda unit: unit.life))
             if self.attack(me, game, move, skills, target, False):
                 return
             # Chase for him.
