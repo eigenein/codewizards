@@ -191,7 +191,7 @@ class MyStrategy:
         # Units to check for collisions against.
         units = [
             unit
-            for unit in itertools.chain(world.buildings, world.minions, world.wizards)
+            for unit in itertools.chain(world.buildings, world.minions, world.wizards, world.trees)
             if unit.id != me.id
         ]
         # Let's do grid search!
