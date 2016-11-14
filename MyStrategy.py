@@ -327,7 +327,7 @@ class MyStrategy:
 
     def avoid_collisions(self, me: Wizard, game: Game, world: World, move: Move, opponent_faction: Faction):
         # Let's imagine that there is a kind of spring between me and each other unit.
-        spring_length = me.radius / 2.0
+        spring_length = me.radius
         k = 1000.0
         # Sum up all forces.
         force_x = force_y = 0.0
