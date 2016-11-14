@@ -20,7 +20,7 @@ from model.World import World
 
 class MyStrategy:
     MY_BASE_X, MY_BASE_Y = 200.0, 3800.0
-    OPPONENT_BASE_X, OPPONENT_BASE_Y = 3000.0, 1000.0
+    ATTACK_BASE_X, ATTACK_BASE_Y = 3000.0, 1000.0
 
     SKILL_ORDER = [
         SkillType.STAFF_DAMAGE_BONUS_PASSIVE_1,
@@ -71,7 +71,8 @@ class MyStrategy:
         # Check if I'm healthy.
         if me.life < 0.75 * me.max_life:
             if not self.is_in_danger(me, world, game, attack_faction):
-                # Just stop.
+                # Move forward if no danger.
+                self.move_to(me, world, game, move, self.ATTACK_BASE_X, self.ATTACK_BASE_Y)
                 return
             # Retreat.
             self.move_to(me, world, game, move, self.MY_BASE_X, self.MY_BASE_Y)
@@ -128,8 +129,8 @@ class MyStrategy:
             return
 
         # Nothing special to do, just move to the base.
-        self.move_to(me, world, game, move, self.OPPONENT_BASE_X, self.OPPONENT_BASE_Y)
-        move.turn = me.get_angle_to(self.OPPONENT_BASE_X, self.OPPONENT_BASE_Y)
+        self.move_to(me, world, game, move, self.ATTACK_BASE_X, self.ATTACK_BASE_Y)
+        move.turn = me.get_angle_to(self.ATTACK_BASE_X, self.ATTACK_BASE_Y)
 
     @staticmethod
     def skill_to_learn(skills: Set[SkillType]):
