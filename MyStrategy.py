@@ -69,7 +69,7 @@ class MyStrategy:
         move.status_target_id = me.id
 
         # Check if I'm healthy.
-        if me.life < 0.75 * me.max_life:
+        if me.life < 0.55 * me.max_life:
             if not self.is_in_danger(me, world, game, attack_faction):
                 # Move forward if no danger.
                 self.move_to(me, world, game, move, self.ATTACK_BASE_X, self.ATTACK_BASE_Y)
