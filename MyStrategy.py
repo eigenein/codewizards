@@ -132,6 +132,13 @@ class MyStrategy:
         self.move_to(me, world, game, move, self.ATTACK_BASE_X, self.ATTACK_BASE_Y)
         move.turn = me.get_angle_to(self.ATTACK_BASE_X, self.ATTACK_BASE_Y)
 
+        # Quick and dirty fix.
+        if any(
+            me.get_distance_to_unit(tree) < game.staff_range and abs(me.get_angle_to_unit(tree)) < game.staff_sector / 2.0
+            for tree in world.trees
+        ):
+            move.action = ActionType.STAFF
+
     @staticmethod
     def skill_to_learn(skills: Set[SkillType]):
         for skill in MyStrategy.SKILL_ORDER:
