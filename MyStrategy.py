@@ -54,7 +54,7 @@ SKILL_ORDER = [
 ]
 
 # Half of tile size.
-TILE_SPAN = 200.0
+TILE_SPAN = 200.0 + 1.0
 
 KEY_TILES = [
     # Top lane.
@@ -159,17 +159,6 @@ class MyStrategy:
         # Apply some skill.
         move.status_target_id = me.id
 
-        # Check if I'm healthy.
-        if me.life < 0.50 * me.max_life and self.is_in_danger(me, world, game, attack_faction):
-            # Retreat to my base.
-            self.move_by_tiles_to(me, world, game, move, MY_BASE_X, MY_BASE_Y)
-            # And try to attack anyone.
-            for unit in itertools.chain(world.wizards, world.minions, world.buildings):
-                if unit.faction == attack_faction:
-                    if self.attack(me, game, move, skills, unit, False):
-                        break
-            return
-
         # Bonus pick up.
         if world.bonuses:
             # Remember the nearest bonus.
@@ -183,31 +172,33 @@ class MyStrategy:
                 self.move_by_tiles_to(me, world, game, move, self.bonus.x, self.bonus.y)
                 return
 
+        # Check if I'm healthy.
+        if me.life < 0.50 * me.max_life and self.is_in_danger(me, world, game, attack_faction):
+            # Retreat to my base.
+            self.move_by_tiles_to(me, world, game, move, MY_BASE_X, MY_BASE_Y)
+            # And try to attack the nearest enemy.
+            targets = sorted((
+                unit
+                for unit in itertools.chain(world.wizards, world.minions, world.buildings)
+                if unit.faction == attack_faction
+            ), key=(lambda unit: me.get_distance_to_unit(unit)))
+            for target in targets:
+                if self.attack(me, game, move, skills, target, False):
+                    break
+            return
+
         # Else try to attack the best target.
         if MyStrategy.attack_best_target(me, world, game, move, skills, attack_faction):
             return
 
-        # Nothing to do. Let's find enemy count for each tile.
-        tile_enemy_count = {
-            i: sum(
-                1 if MyStrategy.is_in_tile(tile_x, tile_y, unit.x, unit.y) else 0
-                for unit in itertools.chain(world.wizards)
-                if unit.faction == attack_faction
-            )
-            for i, (tile_x, tile_y) in enumerate(KEY_TILES)
-        }
-        # And find the nearest one with the maximum of enemies.
-        max_enemies = max(tile_enemy_count.values())
-        if max_enemies != 0:
-            x, y = KEY_TILES[min(
-                (i for i, count in tile_enemy_count.items() if count == max_enemies),
-                key=(lambda i: me.get_distance_to(*KEY_TILES[i]))
-            )]
+        # Nothing to do. Move the nearest enemy wizard.
+        targets = [unit for unit in world.wizards if unit.faction == attack_faction]
+        if targets:
+            target = min(targets, key=(lambda unit: me.get_distance_to_unit(unit)))
+            x, y = self.move_by_tiles_to(me, world, game, move, target.x, target.y)
         else:
             # No visible enemies at all. Just move to the enemy base.
             x, y = ATTACK_BASE_X, ATTACK_BASE_Y
-        if world.tick_index % 100 == 0:
-            print("#%s | %s | %s %s" % (world.tick_index, max_enemies, x, y))
         x, y = self.move_by_tiles_to(me, world, game, move, x, y)
         # Maximize speed because it's better to look at the movement direction.
         move.turn = me.get_angle_to(x, y)
@@ -295,12 +286,11 @@ class MyStrategy:
         # Project the destination vector onto the strafe speed vector.
         strafe_speed = direction_x * (-turn_y) + direction_y * turn_x
         # Finally, set up the movement.
+        max_speed = 10.0
         if speed > 0.0:
-            max_speed = max(game.wizard_forward_speed, game.wizard_strafe_speed)
             move.speed = speed * max_speed
             move.strafe_speed = strafe_speed * max_speed
         else:
-            max_speed = max(game.wizard_backward_speed, game.wizard_strafe_speed)
             move.speed = speed * max_speed
             move.strafe_speed = strafe_speed * max_speed
 
@@ -343,17 +333,6 @@ class MyStrategy:
             MyStrategy.move_to(me, world, game, move, target.x, target.y)
             return True
 
-        # Else try to attack an enemy minion.
-        targets = [
-            unit
-            for unit in world.minions
-            if unit.faction == attack_faction and me.get_distance_to_unit(unit) < me.cast_range
-        ]
-        if targets:
-            target = min(targets, key=(lambda unit: unit.life))
-            if MyStrategy.attack(me, game, move, skills, target, False):
-                return True
-
         # Else try to attack an enemy building.
         targets = [
             unit
@@ -367,6 +346,17 @@ class MyStrategy:
             # Move closer to the building.
             MyStrategy.move_to(me, world, game, move, target.x, target.y)
             return True
+
+        # Else try to attack an enemy minion.
+        targets = [
+            unit
+            for unit in world.minions
+            if unit.faction == attack_faction and me.get_distance_to_unit(unit) < me.cast_range
+        ]
+        if targets:
+            target = min(targets, key=(lambda unit: unit.life))
+            if MyStrategy.attack(me, game, move, skills, target, False):
+                return True
 
         # Couldn't attack anyone.
         return False
