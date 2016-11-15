@@ -39,8 +39,8 @@
       <file leaf-file-name="MyStrategy.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/MyStrategy.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-853">
-              <caret line="56" column="23" selection-start-line="56" selection-start-column="23" selection-end-line="56" selection-end-column="23" />
+            <state relative-caret-position="440">
+              <caret line="213" column="31" selection-start-line="213" selection-start-column="31" selection-end-line="213" selection-end-column="31" />
               <folding />
             </state>
           </provider>
@@ -894,8 +894,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/MyStrategy.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-853">
-          <caret line="56" column="23" selection-start-line="56" selection-start-column="23" selection-end-line="56" selection-end-column="23" />
+        <state relative-caret-position="440">
+          <caret line="213" column="31" selection-start-line="213" selection-start-column="31" selection-end-line="213" selection-end-column="31" />
           <folding />
         </state>
       </provider>

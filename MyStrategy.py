@@ -12,6 +12,7 @@ from model.ActionType import ActionType
 from model.CircularUnit import CircularUnit
 from model.Faction import Faction
 from model.Game import Game
+from model.MinionType import MinionType
 from model.Move import Move
 from model.SkillType import SkillType
 from model.Wizard import Wizard
@@ -170,38 +171,23 @@ class MyStrategy:
             else:
                 # Going to the remembered bonus.
                 self.move_by_tiles_to(me, world, game, move, self.bonus.x, self.bonus.y)
+                MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction)
                 return
 
         # Check if I'm healthy.
         if me.life < 0.50 * me.max_life and self.is_in_danger(me, world, game, attack_faction):
             # Retreat to my base.
             self.move_by_tiles_to(me, world, game, move, MY_BASE_X, MY_BASE_Y)
-            # And try to attack the nearest enemy.
-            targets = sorted((
-                unit
-                for unit in itertools.chain(world.wizards, world.minions, world.buildings)
-                if unit.faction == attack_faction
-            ), key=(lambda unit: me.get_distance_to_unit(unit)))
-            for target in targets:
-                if self.attack(me, game, move, skills, target, False):
-                    break
+            MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction)
             return
 
         # Else try to attack the best target.
         if MyStrategy.attack_best_target(me, world, game, move, skills, attack_faction):
             return
 
-        # Nothing to do. Move the nearest enemy wizard.
-        targets = [unit for unit in world.wizards if unit.faction == attack_faction]
-        if targets:
-            target = min(targets, key=(lambda unit: me.get_distance_to_unit(unit)))
-            x, y = self.move_by_tiles_to(me, world, game, move, target.x, target.y)
-        else:
-            # No visible enemies at all. Just move to the enemy base.
-            x, y = ATTACK_BASE_X, ATTACK_BASE_Y
-        x, y = self.move_by_tiles_to(me, world, game, move, x, y)
-        # Maximize speed because it's better to look at the movement direction.
-        move.turn = me.get_angle_to(x, y)
+        # Nothing to do. Just go to enemy base.
+        self.move_by_tiles_to(me, world, game, move, ATTACK_BASE_X, ATTACK_BASE_Y)
+        move.turn = me.get_angle_to(ATTACK_BASE_X, ATTACK_BASE_Y)
 
     @staticmethod
     def skill_to_learn(skills: Set[SkillType]):
@@ -221,8 +207,11 @@ class MyStrategy:
             if wizard.faction == attack_faction and wizard.get_distance_to_unit(me) < wizard.cast_range + span:
                 return True
         for minion in world.minions:
-            if minion.faction == attack_faction and minion.get_distance_to_unit(me) < game.fetish_blowdart_attack_range + span:
-                return True
+            if minion.faction == attack_faction:
+                if minion.type == MinionType.FETISH_BLOWDART and minion.get_distance_to_unit(me) < game.fetish_blowdart_attack_range + span:
+                    return True
+                if minion.type == MinionType.ORC_WOODCUTTER and minion.get_distance_to_unit(me) < game.orc_woodcutter_attack_range + span:
+                    return True
         for building in world.buildings:
             if building.faction == attack_faction and building.get_distance_to_unit(me) < game.guardian_tower_attack_range + span:
                 return True
@@ -360,6 +349,17 @@ class MyStrategy:
 
         # Couldn't attack anyone.
         return False
+
+    @staticmethod
+    def attack_nearest_enemy(me: Wizard, world: World, game: Game, move: Move, skills: Set, attack_faction):
+        targets = sorted((
+            unit
+            for unit in itertools.chain(world.wizards, world.minions, world.buildings)
+            if unit.faction == attack_faction
+        ), key=(lambda unit: me.get_distance_to_unit(unit)))
+        for target in targets:
+            if MyStrategy.attack(me, game, move, skills, target, False):
+                break
 
     @staticmethod
     def attack(me: Wizard, game: Game, move: Move, skills: Set, unit: CircularUnit, is_group: bool):
