@@ -83,7 +83,13 @@ class MyStrategy:
                         break
             return
 
-        # Try to attack an enemy wizard.
+        # Try to pick up bonus.
+        if world.bonuses:
+            target = min(world.bonuses, key=(lambda unit: me.get_distance_to_unit(unit)))
+            self.move_to(me, world, game, move, target.x, target.y)
+            return
+
+        # Else try to attack an enemy wizard.
         targets = [
             unit
             for unit in world.wizards
@@ -94,12 +100,6 @@ class MyStrategy:
             if self.attack(me, game, move, skills, target, False):
                 return
             # Chase for him.
-            self.move_to(me, world, game, move, target.x, target.y)
-            return
-
-        # Else try to pick up bonus.
-        if world.bonuses:
-            target = min(world.bonuses, key=(lambda unit: me.get_distance_to_unit(unit)))
             self.move_to(me, world, game, move, target.x, target.y)
             return
 
