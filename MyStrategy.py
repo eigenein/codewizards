@@ -216,14 +216,15 @@ class MyStrategy:
             ):
                 return True
         for minion in world.minions:
-            if max_life_risk < 0.0:
+            minions = [
+                minion
+                for minion in world.minions
+                if minion.faction == attack_faction and minion.get_distance_to_unit(me) < game.fetish_blowdart_attack_range + span
+            ]
+            if minions and max_life_risk < 0.0:
                 return True
-            if minion.faction == attack_faction:
-                if (
-                    minion.get_distance_to_unit(me) < game.fetish_blowdart_attack_range + span and
-                    max_life_risk < minion.damage
-                ):
-                    return True
+            if max_life_risk < minion.damage * len(minions):
+                return True
         for building in world.buildings:
             if max_life_risk < 0.0:
                 return True
