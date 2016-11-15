@@ -161,8 +161,10 @@ class MyStrategy:
         move.status_target_id = me.id
 
         # Bonus pick up.
-        if world.tick_index % 2500 == 2200:
+        if (me.x > 1600.0 or me.y < 2400.0) and world.tick_index % 2500 == 2400:
             self.pick_up_bonus = 0
+        if me.x < 400.0 and me.y < 400.0:
+            self.pick_up_bonus = None
         if self.pick_up_bonus is not None:
             if not MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction):
                 move.turn = me.get_angle_to(*BONUSES[self.pick_up_bonus])
