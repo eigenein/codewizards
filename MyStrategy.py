@@ -18,44 +18,135 @@ from model.Wizard import Wizard
 from model.World import World
 
 
-class MyStrategy:
-    MY_BASE_X, MY_BASE_Y = 200.0, 3800.0
-    ATTACK_BASE_X, ATTACK_BASE_Y = 3000.0, 1000.0
+MY_BASE_X, MY_BASE_Y = 200.0, 3800.0
+ATTACK_BASE_X, ATTACK_BASE_Y = 3000.0, 1000.0
 
-    SKILL_ORDER = [
-        SkillType.STAFF_DAMAGE_BONUS_PASSIVE_1,
-        SkillType.STAFF_DAMAGE_BONUS_AURA_1,
-        SkillType.STAFF_DAMAGE_BONUS_PASSIVE_2,
-        SkillType.STAFF_DAMAGE_BONUS_AURA_2,
-        SkillType.FIREBALL,
+SKILL_ORDER = [
+    SkillType.STAFF_DAMAGE_BONUS_PASSIVE_1,
+    SkillType.STAFF_DAMAGE_BONUS_AURA_1,
+    SkillType.STAFF_DAMAGE_BONUS_PASSIVE_2,
+    SkillType.STAFF_DAMAGE_BONUS_AURA_2,
+    SkillType.FIREBALL,
 
-        SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_1,
-        SkillType.MAGICAL_DAMAGE_BONUS_AURA_1,
-        SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_2,
-        SkillType.MAGICAL_DAMAGE_BONUS_AURA_2,
-        SkillType.FROST_BOLT,
+    SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_1,
+    SkillType.MAGICAL_DAMAGE_BONUS_AURA_1,
+    SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_2,
+    SkillType.MAGICAL_DAMAGE_BONUS_AURA_2,
+    SkillType.FROST_BOLT,
 
-        SkillType.RANGE_BONUS_PASSIVE_1,
-        SkillType.RANGE_BONUS_AURA_1,
-        SkillType.RANGE_BONUS_PASSIVE_2,
-        SkillType.RANGE_BONUS_AURA_2,
-        SkillType.ADVANCED_MAGIC_MISSILE,
+    SkillType.RANGE_BONUS_PASSIVE_1,
+    SkillType.RANGE_BONUS_AURA_1,
+    SkillType.RANGE_BONUS_PASSIVE_2,
+    SkillType.RANGE_BONUS_AURA_2,
+    SkillType.ADVANCED_MAGIC_MISSILE,
 
-        SkillType.MOVEMENT_BONUS_FACTOR_PASSIVE_1,
-        SkillType.MOVEMENT_BONUS_FACTOR_AURA_1,
-        SkillType.MOVEMENT_BONUS_FACTOR_PASSIVE_2,
-        SkillType.MOVEMENT_BONUS_FACTOR_AURA_2,
-        SkillType.HASTE,
+    SkillType.MOVEMENT_BONUS_FACTOR_PASSIVE_1,
+    SkillType.MOVEMENT_BONUS_FACTOR_AURA_1,
+    SkillType.MOVEMENT_BONUS_FACTOR_PASSIVE_2,
+    SkillType.MOVEMENT_BONUS_FACTOR_AURA_2,
+    SkillType.HASTE,
 
-        SkillType.MAGICAL_DAMAGE_ABSORPTION_PASSIVE_1,
-        SkillType.MAGICAL_DAMAGE_ABSORPTION_AURA_1,
-        SkillType.MAGICAL_DAMAGE_ABSORPTION_PASSIVE_2,
-        SkillType.MAGICAL_DAMAGE_ABSORPTION_AURA_2,
-        SkillType.SHIELD,
+    SkillType.MAGICAL_DAMAGE_ABSORPTION_PASSIVE_1,
+    SkillType.MAGICAL_DAMAGE_ABSORPTION_AURA_1,
+    SkillType.MAGICAL_DAMAGE_ABSORPTION_PASSIVE_2,
+    SkillType.MAGICAL_DAMAGE_ABSORPTION_AURA_2,
+    SkillType.SHIELD,
+]
+
+# Half of tile size.
+TILE_SPAN = 200.0
+
+KEY_TILES = [
+    # Top lane.
+    (200.0, 200.0),
+    (600.0, 200.0),
+    (1000.0, 200.0),
+    (1400.0, 200.0),
+    (1800.0, 200.0),
+    (2200.0, 200.0),
+    (2600.0, 200.0),
+    (3000.0, 200.0),
+    (3400.0, 200.0),
+    (3800.0, 200.0),
+    # Bottom lane.
+    (200.0, 3800.0),
+    (600.0, 3800.0),
+    (1000.0, 3800.0),
+    (1400.0, 3800.0),
+    (1800.0, 3800.0),
+    (2200.0, 3800.0),
+    (2600.0, 3800.0),
+    (3000.0, 3800.0),
+    (3400.0, 3800.0),
+    (3800.0, 3800.0),
+    # Left lane.
+    (200.0, 600.0),
+    (200.0, 1000.0),
+    (200.0, 1400.0),
+    (200.0, 1800.0),
+    (200.0, 2200.0),
+    (200.0, 2600.0),
+    (200.0, 3000.0),
+    (200.0, 3400.0),
+    # Right lane.
+    (3800.0, 600.0),
+    (3800.0, 1000.0),
+    (3800.0, 1400.0),
+    (3800.0, 1800.0),
+    (3800.0, 2200.0),
+    (3800.0, 2600.0),
+    (3800.0, 3000.0),
+    (3800.0, 3400.0),
+    # Main diagonal.
+    (600.0, 3400.0),
+    (800.0, 3200.0),
+    (1000.0, 3000.0),
+    (1200.0, 2800.0),
+    (1400.0, 2600.0),
+    (1600.0, 2400.0),
+    (1800.0, 2200.0),
+    (2000.0, 2000.0),
+    (2200.0, 1800.0),
+    (2400.0, 1600.0),
+    (2600.0, 1400.0),
+    (2800.0, 1200.0),
+    (3000.0, 1000.0),
+    (3200.0, 800.0),
+    (3400.0, 600.0),
+    # Other diagonal.
+    (600.0, 600.0),
+    (800.0, 800.0),
+    (1000.0, 1000.0),
+    (1200.0, 1200.0),
+    (1400.0, 1400.0),
+    (1600.0, 1600.0),
+    (1800.0, 1800.0),
+    (2200.0, 2200.0),
+    (2400.0, 2400.0),
+    (2600.0, 2600.0),
+    (2800.0, 2800.0),
+    (3000.0, 3000.0),
+    (3200.0, 3200.0),
+    (3400.0, 3400.0),
+]
+
+DIRECT_MOVE_DISTANCE = 600.0
+
+KEY_ADJACENT = {
+    i: [
+        j
+        for j, (jx, jy) in enumerate(KEY_TILES)
+        if i != j and math.hypot(ix - jx, iy - jy) < DIRECT_MOVE_DISTANCE
     ]
+    for i, (ix, iy) in enumerate(KEY_TILES)
+}
+
+
+class MyStrategy:
 
     def __init__(self):
         random.seed(time.time())
+        self.bonus = None
 
     # noinspection PyMethodMayBeStatic
     def move(self, me: Wizard, world: World, game: Game, move: Move):
@@ -69,13 +160,9 @@ class MyStrategy:
         move.status_target_id = me.id
 
         # Check if I'm healthy.
-        if me.life < 0.50 * me.max_life:
-            if not self.is_in_danger(me, world, game, attack_faction):
-                # Move forward if no danger.
-                self.move_to(me, world, game, move, self.ATTACK_BASE_X, self.ATTACK_BASE_Y)
-                return
-            # Retreat.
-            self.move_to(me, world, game, move, self.MY_BASE_X, self.MY_BASE_Y)
+        if me.life < 0.50 * me.max_life and self.is_in_danger(me, world, game, attack_faction):
+            # Retreat to my base.
+            self.move_by_tiles_to(me, world, game, move, MY_BASE_X, MY_BASE_Y)
             # And try to attack anyone.
             for unit in itertools.chain(world.wizards, world.minions, world.buildings):
                 if unit.faction == attack_faction:
@@ -83,65 +170,51 @@ class MyStrategy:
                         break
             return
 
-        # Try to pick up bonus.
+        # Bonus pick up.
         if world.bonuses:
-            target = min(world.bonuses, key=(lambda unit: me.get_distance_to_unit(unit)))
-            self.move_to(me, world, game, move, target.x, target.y)
-            return
-
-        # Else try to attack an enemy wizard.
-        targets = [
-            unit
-            for unit in world.wizards
-            if unit.faction == attack_faction and me.get_distance_to_unit(unit) < me.vision_range
-        ]
-        if targets:
-            target = min(targets, key=(lambda unit: unit.life))
-            if self.attack(me, game, move, skills, target, False):
-                return
-            # Chase for him.
-            self.move_to(me, world, game, move, target.x, target.y)
-            return
-
-        # Else try to attack an enemy minion.
-        targets = [
-            unit
-            for unit in world.minions
-            if unit.faction == attack_faction and me.get_distance_to_unit(unit) < me.cast_range
-        ]
-        if targets:
-            target = min(targets, key=(lambda unit: unit.life))
-            if self.attack(me, game, move, skills, target, False):
+            # Remember the nearest bonus.
+            self.bonus = min(world.bonuses, key=(lambda unit: me.get_distance_to_unit(unit)))
+        if self.bonus is not None:
+            if me.get_distance_to_unit(self.bonus) < me.radius:
+                # Reached the destination.
+                self.bonus = None
+            else:
+                # Going to the remembered bonus.
+                self.move_by_tiles_to(me, world, game, move, self.bonus.x, self.bonus.y)
                 return
 
-        # Else try to attack an enemy building.
-        targets = [
-            unit
-            for unit in world.buildings
-            if unit.faction == attack_faction and me.get_distance_to_unit(unit) < me.vision_range
-        ]
-        if targets:
-            target = min(targets, key=(lambda unit: me.get_distance_to_unit(unit)))
-            if self.attack(me, game, move, skills, target, False):
-                return
-            # Move closer to the building.
-            self.move_to(me, world, game, move, target.x, target.y)
+        # Else try to attack the best target.
+        if MyStrategy.attack_best_target(me, world, game, move, skills, attack_faction):
             return
 
-        # Nothing special to do, just move to the base.
-        self.move_to(me, world, game, move, self.ATTACK_BASE_X, self.ATTACK_BASE_Y)
-        move.turn = me.get_angle_to(self.ATTACK_BASE_X, self.ATTACK_BASE_Y)
-
-        # Quick and dirty fix.
-        if any(
-            me.get_distance_to_unit(tree) < game.staff_range and abs(me.get_angle_to_unit(tree)) < game.staff_sector / 2.0
-            for tree in world.trees
-        ):
-            move.action = ActionType.STAFF
+        # Nothing to do. Let's find enemy count for each tile.
+        tile_enemy_count = {
+            i: sum(
+                1 if MyStrategy.is_in_tile(tile_x, tile_y, unit.x, unit.y) else 0
+                for unit in itertools.chain(world.wizards)
+                if unit.faction == attack_faction
+            )
+            for i, (tile_x, tile_y) in enumerate(KEY_TILES)
+        }
+        # And find the nearest one with the maximum of enemies.
+        max_enemies = max(tile_enemy_count.values())
+        if max_enemies != 0:
+            x, y = KEY_TILES[min(
+                (i for i, count in tile_enemy_count.items() if count == max_enemies),
+                key=(lambda i: me.get_distance_to(*KEY_TILES[i]))
+            )]
+        else:
+            # No visible enemies at all. Just move to the enemy base.
+            x, y = ATTACK_BASE_X, ATTACK_BASE_Y
+        if world.tick_index % 100 == 0:
+            print("#%s | %s | %s %s" % (world.tick_index, max_enemies, x, y))
+        x, y = self.move_by_tiles_to(me, world, game, move, x, y)
+        # Maximize speed because it's better to look at the movement direction.
+        move.turn = me.get_angle_to(x, y)
 
     @staticmethod
     def skill_to_learn(skills: Set[SkillType]):
-        for skill in MyStrategy.SKILL_ORDER:
+        for skill in SKILL_ORDER:
             # Just look for the first skill in the list.
             if skill not in skills:
                 return skill
@@ -165,10 +238,48 @@ class MyStrategy:
         return False
 
     @staticmethod
-    def move_to(me: Wizard, world: World, game: Game, move: Move, x: float, y: float):
+    def move_by_tiles_to(me: Wizard, world: World, game: Game, move: Move, x: float, y: float) -> Tuple[float, float]:
+        # We're already there?
         if me.get_distance_to(x, y) < me.radius:
             # Reached the destination.
-            return
+            return x, y
+        if me.get_distance_to(x, y) < DIRECT_MOVE_DISTANCE:
+            # We can just move there.
+            MyStrategy.move_to(me, world, game, move, x, y)
+            return x, y
+        # Find the nearest tile.
+        my_index, (my_tile_x, my_tile_y) = min(enumerate(KEY_TILES), key=(lambda tile: me.get_distance_to(*tile[1])))
+        if not MyStrategy.is_in_tile(my_tile_x, my_tile_y, me.x, me.y):
+            # We're away. Go to this tile.
+            MyStrategy.move_to(me, world, game, move, my_tile_x, my_tile_y)
+            return my_tile_x, my_tile_y
+        # Find the destination tile.
+        destination_index = next(
+            i for i, (tile_x, tile_y) in enumerate(KEY_TILES)
+            if MyStrategy.is_in_tile(tile_x, tile_y, x, y)
+        )
+        # Find route between tiles.
+        bfs_queue = [destination_index]
+        bfs_visited = {destination_index}
+        while bfs_queue:
+            current_index = bfs_queue.pop(0)
+            for previous_index in KEY_ADJACENT[current_index]:
+                if previous_index == my_index:
+                    move_x, move_y = KEY_TILES[current_index]
+                    MyStrategy.move_to(me, world, game, move, move_x, move_y)
+                    return move_x, move_y
+                if previous_index not in bfs_visited:
+                    bfs_queue.append(previous_index)
+                    bfs_visited.add(current_index)
+        print("Failed to find route from %s, %s to %s, %s" % (me.x, me.y, x, y))
+        return x, y
+
+    @staticmethod
+    def is_in_tile(tile_x: float, tile_y: float, x: float, y: float) -> bool:
+        return tile_x - TILE_SPAN < x < tile_x + TILE_SPAN and tile_y - TILE_SPAN < y < tile_y + TILE_SPAN
+
+    @staticmethod
+    def move_to(me: Wizard, world: World, game: Game, move: Move, x: float, y: float):
         x, y = MyStrategy.avoid_collisions(me, world, x, y)
         direction_x, direction_y = x - me.x, y - me.y
         # Normalize the destination vector.
@@ -218,7 +329,50 @@ class MyStrategy:
         return new_x, new_y
 
     @staticmethod
-    def attack(me: Wizard, game: Game, move: Move, skills: Set[SkillType], unit: CircularUnit, is_group: bool):
+    def attack_best_target(me: Wizard, world: World, game: Game, move: Move, skills: Set, attack_faction):
+        targets = [
+            unit
+            for unit in world.wizards
+            if unit.faction == attack_faction and me.get_distance_to_unit(unit) < me.vision_range
+        ]
+        if targets:
+            target = min(targets, key=(lambda unit: unit.life))
+            if MyStrategy.attack(me, game, move, skills, target, False):
+                return True
+            # Chase for him.
+            MyStrategy.move_to(me, world, game, move, target.x, target.y)
+            return True
+
+        # Else try to attack an enemy minion.
+        targets = [
+            unit
+            for unit in world.minions
+            if unit.faction == attack_faction and me.get_distance_to_unit(unit) < me.cast_range
+        ]
+        if targets:
+            target = min(targets, key=(lambda unit: unit.life))
+            if MyStrategy.attack(me, game, move, skills, target, False):
+                return True
+
+        # Else try to attack an enemy building.
+        targets = [
+            unit
+            for unit in world.buildings
+            if unit.faction == attack_faction and me.get_distance_to_unit(unit) < me.vision_range
+        ]
+        if targets:
+            target = min(targets, key=(lambda unit: me.get_distance_to_unit(unit)))
+            if MyStrategy.attack(me, game, move, skills, target, False):
+                return True
+            # Move closer to the building.
+            MyStrategy.move_to(me, world, game, move, target.x, target.y)
+            return True
+
+        # Couldn't attack anyone.
+        return False
+
+    @staticmethod
+    def attack(me: Wizard, game: Game, move: Move, skills: Set, unit: CircularUnit, is_group: bool):
         action_type, min_cast_distance = MyStrategy.get_action(me, game, skills, unit, is_group)
         if action_type == ActionType.NONE:
             return False
