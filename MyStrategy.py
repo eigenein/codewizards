@@ -20,7 +20,7 @@ from model.World import World
 
 
 MY_BASE_X, MY_BASE_Y = 200.0, 3800.0
-ATTACK_BASE_X, ATTACK_BASE_Y = 3000.0, 1000.0
+ATTACK_BASE_X, ATTACK_BASE_Y = 3800.0, 200.0
 
 SKILL_ORDER = [
     SkillType.STAFF_DAMAGE_BONUS_PASSIVE_1,
@@ -161,21 +161,21 @@ class MyStrategy:
         move.status_target_id = me.id
 
         # Bonus pick up.
-        if world.bonuses:
-            # Remember the nearest bonus.
-            self.bonus = min(world.bonuses, key=(lambda unit: me.get_distance_to_unit(unit)))
-        if self.bonus is not None:
-            if me.get_distance_to_unit(self.bonus) < me.radius:
-                # Reached the destination.
-                self.bonus = None
-            else:
-                # Going to the remembered bonus.
-                self.move_by_tiles_to(me, world, game, move, self.bonus.x, self.bonus.y)
-                MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction)
-                return
+        # if world.bonuses:
+        #     # Remember the nearest bonus.
+        #     self.bonus = min(world.bonuses, key=(lambda unit: me.get_distance_to_unit(unit)))
+        # if self.bonus is not None:
+        #     if me.get_distance_to_unit(self.bonus) < me.radius:
+        #         # Reached the destination.
+        #         self.bonus = None
+        #     else:
+        #         # Going to the remembered bonus.
+        #         self.move_by_tiles_to(me, world, game, move, self.bonus.x, self.bonus.y)
+        #         MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction)
+        #         return
 
         # Check if I'm healthy.
-        if me.life < 0.50 * me.max_life and self.is_in_danger(me, world, game, attack_faction):
+        if me.life < 0.75 * me.max_life and self.is_in_danger(me, world, game, attack_faction):
             # Retreat to my base.
             self.move_by_tiles_to(me, world, game, move, MY_BASE_X, MY_BASE_Y)
             MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction)
@@ -315,10 +315,15 @@ class MyStrategy:
             if unit.faction == attack_faction and me.get_distance_to_unit(unit) < me.vision_range
         ]
         if targets:
+            # Try to attack the weakest wizard.
             target = min(targets, key=(lambda unit: unit.life))
             if MyStrategy.attack(me, game, move, skills, target, False):
                 return True
-            # Chase for him.
+            # Try to attack the nearest wizard.
+            target = min(targets, key=(lambda unit: me.get_distance_to_unit(unit)))
+            if MyStrategy.attack(me, game, move, skills, target, False):
+                return True
+            # Chase for it.
             MyStrategy.move_to(me, world, game, move, target.x, target.y)
             return True
 
