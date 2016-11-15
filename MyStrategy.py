@@ -12,7 +12,6 @@ from model.ActionType import ActionType
 from model.CircularUnit import CircularUnit
 from model.Faction import Faction
 from model.Game import Game
-from model.MinionType import MinionType
 from model.Move import Move
 from model.SkillType import SkillType
 from model.Wizard import Wizard
@@ -21,6 +20,7 @@ from model.World import World
 
 MY_BASE_X, MY_BASE_Y = 200.0, 3800.0
 ATTACK_BASE_X, ATTACK_BASE_Y = 3800.0, 200.0
+BONUSES = [(1200.0, 1200.0), (2800.0, 2800.0)]
 
 SKILL_ORDER = [
     SkillType.STAFF_DAMAGE_BONUS_PASSIVE_1,
@@ -55,7 +55,7 @@ SKILL_ORDER = [
 ]
 
 # Half of tile size.
-TILE_SPAN = 200.0 + 1.0
+TILE_SPAN = 200.0 + 5.0
 
 KEY_TILES = [
     # Top lane.
@@ -147,7 +147,7 @@ class MyStrategy:
 
     def __init__(self):
         random.seed(time.time())
-        self.bonus = None
+        self.pick_up_bonus = None
 
     # noinspection PyMethodMayBeStatic
     def move(self, me: Wizard, world: World, game: Game, move: Move):
@@ -161,18 +161,16 @@ class MyStrategy:
         move.status_target_id = me.id
 
         # Bonus pick up.
-        # if world.bonuses:
-        #     # Remember the nearest bonus.
-        #     self.bonus = min(world.bonuses, key=(lambda unit: me.get_distance_to_unit(unit)))
-        # if self.bonus is not None:
-        #     if me.get_distance_to_unit(self.bonus) < me.radius:
-        #         # Reached the destination.
-        #         self.bonus = None
-        #     else:
-        #         # Going to the remembered bonus.
-        #         self.move_by_tiles_to(me, world, game, move, self.bonus.x, self.bonus.y)
-        #         MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction)
-        #         return
+        if world.tick_index % 2500 == 2200:
+            self.pick_up_bonus = 0
+        if self.pick_up_bonus is not None:
+            if not MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction):
+                move.turn = me.get_angle_to(*BONUSES[self.pick_up_bonus])
+            if me.get_distance_to(*BONUSES[self.pick_up_bonus]) < me.radius:
+                self.pick_up_bonus = 1 if self.pick_up_bonus == 0 else None
+            else:
+                self.move_by_tiles_to(me, world, game, move, *BONUSES[self.pick_up_bonus])
+            return
 
         # Check if I'm healthy.
         if self.is_in_danger(me, world, game, attack_faction):
@@ -186,8 +184,8 @@ class MyStrategy:
             return
 
         # Nothing to do. Just go to enemy base.
-        self.move_by_tiles_to(me, world, game, move, ATTACK_BASE_X, ATTACK_BASE_Y)
-        move.turn = me.get_angle_to(ATTACK_BASE_X, ATTACK_BASE_Y)
+        x, y = self.move_by_tiles_to(me, world, game, move, ATTACK_BASE_X, ATTACK_BASE_Y)
+        move.turn = me.get_angle_to(x, y)
 
     @staticmethod
     def skill_to_learn(skills: Set[SkillType]):
@@ -205,36 +203,34 @@ class MyStrategy:
         max_life_risk = me.life - 0.25 * me.max_life
         span = 2.0 * me.radius
         for wizard in world.wizards:
+            if wizard.faction != attack_faction:
+                continue
+            if wizard.get_distance_to_unit(me) > wizard.cast_range + span:
+                continue
             if max_life_risk < 0.0:
                 return True
-            if (
-                wizard.faction == attack_faction and
-                wizard.get_distance_to_unit(me) < wizard.cast_range + span and (
-                    SkillType.FIREBALL in wizard.skills or
-                    max_life_risk < max(game.staff_damage, game.magic_missile_direct_damage, game.frost_bolt_direct_damage)
-                )
-            ):
+            if SkillType.FIREBALL in wizard.skills:
                 return True
-        for minion in world.minions:
-            minions = [
-                minion
-                for minion in world.minions
-                if minion.faction == attack_faction and minion.get_distance_to_unit(me) < game.fetish_blowdart_attack_range + span
-            ]
-            if minions and max_life_risk < 0.0:
+            if max_life_risk < max(game.staff_damage, game.magic_missile_direct_damage, game.frost_bolt_direct_damage):
                 return True
-            if max_life_risk < minion.damage * len(minions):
-                return True
+        if any(
+            minion.get_distance_to_unit(me) < game.fetish_blowdart_attack_range + span
+            for minion in world.minions
+            if minion.faction == attack_faction
+        ):
+            return True
         for building in world.buildings:
+            if building.faction != attack_faction:
+                continue
+            if building.get_distance_to_unit(me) > game.guardian_tower_attack_range + span:
+                continue
             if max_life_risk < 0.0:
                 return True
-            if (
-                building.faction == attack_faction and
-                building.get_distance_to_unit(me) < game.guardian_tower_attack_range + span and
-                max_life_risk < game.guardian_tower_damage and
-                building.remaining_action_cooldown_ticks < 0.5 * building.cooldown_ticks
-            ):
-                return True
+            if max_life_risk > game.guardian_tower_damage:
+                continue
+            if building.remaining_action_cooldown_ticks > 0.5 * building.cooldown_ticks:
+                continue
+            return True
         return False
 
     @staticmethod
@@ -384,7 +380,8 @@ class MyStrategy:
         ), key=(lambda unit: me.get_distance_to_unit(unit)))
         for target in targets:
             if MyStrategy.attack(me, game, move, skills, target, False):
-                break
+                return True
+        return False
 
     @staticmethod
     def attack(me: Wizard, game: Game, move: Move, skills: Set, unit: CircularUnit, is_group: bool):
