@@ -175,7 +175,7 @@ class MyStrategy:
         #         return
 
         # Check if I'm healthy.
-        if me.life < 0.75 * me.max_life and self.is_in_danger(me, world, game, attack_faction):
+        if self.is_in_danger(me, world, game, attack_faction):
             # Retreat to my base.
             self.move_by_tiles_to(me, world, game, move, MY_BASE_X, MY_BASE_Y)
             MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction)
@@ -202,18 +202,37 @@ class MyStrategy:
 
     @staticmethod
     def is_in_danger(me: Wizard, world: World, game: Game, attack_faction) -> bool:
+        max_life_risk = me.life - 0.25 * me.max_life
         span = 2.0 * me.radius
         for wizard in world.wizards:
-            if wizard.faction == attack_faction and wizard.get_distance_to_unit(me) < wizard.cast_range + span:
+            if max_life_risk < 0.0:
+                return True
+            if (
+                wizard.faction == attack_faction and
+                wizard.get_distance_to_unit(me) < wizard.cast_range + span and (
+                    SkillType.FIREBALL in wizard.skills or
+                    max_life_risk < max(game.staff_damage, game.magic_missile_direct_damage, game.frost_bolt_direct_damage)
+                )
+            ):
                 return True
         for minion in world.minions:
+            if max_life_risk < 0.0:
+                return True
             if minion.faction == attack_faction:
-                if minion.type == MinionType.FETISH_BLOWDART and minion.get_distance_to_unit(me) < game.fetish_blowdart_attack_range + span:
-                    return True
-                if minion.type == MinionType.ORC_WOODCUTTER and minion.get_distance_to_unit(me) < game.orc_woodcutter_attack_range + span:
+                if (
+                    minion.get_distance_to_unit(me) < game.fetish_blowdart_attack_range + span and
+                    max_life_risk < minion.damage
+                ):
                     return True
         for building in world.buildings:
-            if building.faction == attack_faction and building.get_distance_to_unit(me) < game.guardian_tower_attack_range + span:
+            if max_life_risk < 0.0:
+                return True
+            if (
+                building.faction == attack_faction and
+                building.get_distance_to_unit(me) < game.guardian_tower_attack_range + span and
+                max_life_risk < game.guardian_tower_damage and
+                building.remaining_action_cooldown_ticks < 0.5 * building.cooldown_ticks
+            ):
                 return True
         return False
 
@@ -293,7 +312,7 @@ class MyStrategy:
         ]
         # Let's do grid search!
         new_x, new_y, min_distance = x, y, float("+inf")
-        n, r, span = 20, 2.0 * me.radius, me.radius
+        n, r, span = 20, 1.5 * me.radius, me.radius
         for i in range(n):
             angle = 2 * i * math.pi / n
             test_x, test_y = me.x + r * math.cos(angle), me.y + r * math.sin(angle)
