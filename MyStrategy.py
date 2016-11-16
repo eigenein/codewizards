@@ -196,6 +196,11 @@ class MyStrategy:
         if MyStrategy.attack_best_target(me, world, game, move, skills, attack_faction):
             return
 
+        # Quick and dirty fix to avoid being stuck near the base.
+        if me.x < 400.0 and me.y > 3600.0:
+            move.turn = me.get_angle_to(*self.move_by_tiles_to(me, world, game, move, 200.0, 200.0))
+            return
+
         # Nothing to do. Just go to enemy base.
         x, y = self.move_by_tiles_to(me, world, game, move, ATTACK_BASE_X, ATTACK_BASE_Y)
         move.turn = me.get_angle_to(x, y)

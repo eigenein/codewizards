@@ -27,7 +27,7 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="local-runner.default.properties" pinned="false" current-in-tab="false">
+      <file leaf-file-name="local-runner.default.properties" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/../local-runner-ru/local-runner.default.properties">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="380">
@@ -37,11 +37,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="MyStrategy.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="MyStrategy.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/MyStrategy.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="11">
-              <caret line="170" column="48" selection-start-line="170" selection-start-column="48" selection-end-line="170" selection-end-column="48" />
+            <state relative-caret-position="231">
+              <caret line="200" column="96" selection-start-line="200" selection-start-column="96" selection-end-line="200" selection-end-column="96" />
               <folding />
             </state>
           </provider>
@@ -817,14 +817,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/Library/Caches/PyCharm2016.2/python_stubs/776880377/builtins.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="207">
-          <caret line="526" column="4" selection-start-line="526" selection-start-column="4" selection-end-line="526" selection-end-column="4" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/model/CircularUnit.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="80">
@@ -837,6 +829,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="207">
           <caret line="87" column="4" selection-start-line="87" selection-start-column="4" selection-end-line="87" selection-end-column="4" />
+          <folding />
         </state>
       </provider>
     </entry>
@@ -895,18 +888,26 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/../local-runner-ru/local-runner.default.properties">
+    <entry file="file://$USER_HOME$/Library/Caches/PyCharm2016.2/python_stubs/776880377/builtins.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="380">
-          <caret line="36" column="13" selection-start-line="36" selection-start-column="13" selection-end-line="36" selection-end-column="13" />
+        <state relative-caret-position="211">
+          <caret line="3576" column="8" selection-start-line="3576" selection-start-column="8" selection-end-line="3576" selection-end-column="8" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/MyStrategy.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="11">
-          <caret line="170" column="48" selection-start-line="170" selection-start-column="48" selection-end-line="170" selection-end-column="48" />
+        <state relative-caret-position="231">
+          <caret line="200" column="96" selection-start-line="200" selection-start-column="96" selection-end-line="200" selection-end-column="96" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../local-runner-ru/local-runner.default.properties">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="380">
+          <caret line="36" column="13" selection-start-line="36" selection-start-column="13" selection-end-line="36" selection-end-column="13" />
           <folding />
         </state>
       </provider>
