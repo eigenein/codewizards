@@ -166,18 +166,29 @@ class MyStrategy:
         if me.x < 400.0 and me.y > 3600.0:
             self.pick_up_bonus = None
         if self.pick_up_bonus is not None:
+            x, y = BONUSES[self.pick_up_bonus]
             if not MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction):
-                move.turn = me.get_angle_to(*BONUSES[self.pick_up_bonus])
-            if me.get_distance_to(*BONUSES[self.pick_up_bonus]) < me.radius:
+                move.turn = me.get_angle_to(x, y)
+            if (
+                # Bonus has just been picked up.
+                me.get_distance_to(x, y) < me.radius or
+                # No bonus there.
+                (me.get_distance_to(x, y) < me.vision_range and not world.bonuses)
+            ):
                 self.pick_up_bonus = 1 if self.pick_up_bonus == 0 else None
             else:
                 self.move_by_tiles_to(me, world, game, move, *BONUSES[self.pick_up_bonus])
             return
 
         # Check if I'm healthy.
-        if self.is_in_danger(me, world, game, attack_faction):
-            # Retreat to my base.
-            self.move_by_tiles_to(me, world, game, move, MY_BASE_X, MY_BASE_Y)
+        if self.is_in_danger(me, world, game, me.x, me.y, attack_faction):
+            # Retreat to the nearest safe tile.
+            x, y = min((
+                (x, y)
+                for x, y in KEY_TILES
+                if not self.is_in_danger(me, world, game, x, y, attack_faction)
+            ), key=(lambda point: me.get_distance_to(*point)))
+            self.move_by_tiles_to(me, world, game, move, x, y)
             MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction)
             return
 
@@ -201,13 +212,13 @@ class MyStrategy:
         return Faction.ACADEMY if faction == Faction.RENEGADES else Faction.RENEGADES
 
     @staticmethod
-    def is_in_danger(me: Wizard, world: World, game: Game, attack_faction) -> bool:
+    def is_in_danger(me: Wizard, world: World, game: Game, x: float, y: float, attack_faction) -> bool:
         max_life_risk = me.life - 0.25 * me.max_life
         span = 2.0 * me.radius
         for wizard in world.wizards:
             if wizard.faction != attack_faction:
                 continue
-            if wizard.get_distance_to_unit(me) > wizard.cast_range + span:
+            if wizard.get_distance_to(x, y) > wizard.cast_range + span:
                 continue
             if max_life_risk < 0.0:
                 return True
@@ -216,7 +227,7 @@ class MyStrategy:
             if max_life_risk < max(game.staff_damage, game.magic_missile_direct_damage, game.frost_bolt_direct_damage):
                 return True
         if any(
-            minion.get_distance_to_unit(me) < game.fetish_blowdart_attack_range + span
+            minion.get_distance_to(x, y) < game.fetish_blowdart_attack_range + span
             for minion in world.minions
             if minion.faction == attack_faction
         ):
@@ -224,7 +235,7 @@ class MyStrategy:
         for building in world.buildings:
             if building.faction != attack_faction:
                 continue
-            if building.get_distance_to_unit(me) > game.guardian_tower_attack_range + span:
+            if building.get_distance_to(x, y) > game.guardian_tower_attack_range + span:
                 continue
             if max_life_risk < 0.0:
                 return True
