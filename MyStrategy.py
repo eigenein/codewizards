@@ -180,6 +180,8 @@ class MyStrategy:
                 (me.get_distance_to(x, y) < me.vision_range and not world.bonuses)
             ):
                 self.pick_up_bonus = None
+            else:
+                self.move_by_tiles_to(me, world, game, move, x, y)
             return
 
         # Check if I'm healthy.
