@@ -225,6 +225,8 @@ class MyStrategy:
                 continue
             if wizard.get_distance_to(x, y) > wizard.cast_range + span:
                 continue
+            if wizard.remaining_action_cooldown_ticks > 0.5 * game.wizard_action_cooldown_ticks:
+                continue
             if max_life_risk < 0.0:
                 return True
             if SkillType.FIREBALL in wizard.skills:
@@ -327,7 +329,7 @@ class MyStrategy:
         ]
         # Let's do grid search!
         new_x, new_y, min_distance = x, y, float("+inf")
-        n, r, span = 20, 1.5 * me.radius, me.radius
+        n, r, span = 40, 4.0, 4.0
         for i in range(n):
             angle = 2 * i * math.pi / n
             test_x, test_y = me.x + r * math.cos(angle), me.y + r * math.sin(angle)
