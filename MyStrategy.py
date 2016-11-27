@@ -161,25 +161,25 @@ class MyStrategy:
         move.status_target_id = me.id
 
         # Bonus pick up.
-        if self.pick_up_bonus is None and (me.x > 1600.0 or me.y < 2400.0) and world.tick_index % 2500 >= 2000:
-            self.pick_up_bonus = 0
-            random.shuffle(BONUSES)
+        bonus_tick_index = world.tick_index % 2500
+        if self.pick_up_bonus is None and (me.x > 1600.0 or me.y < 2400.0) and bonus_tick_index >= 2000:
+            self.pick_up_bonus = min(BONUSES, key=(lambda bonus: me.get_distance_to(*bonus)))
         if me.x < 400.0 and me.y > 3600.0:
             self.pick_up_bonus = None
         if self.pick_up_bonus is not None:
-            # noinspection PyTypeChecker
-            x, y = BONUSES[self.pick_up_bonus]
+            x, y = self.pick_up_bonus
             if not MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction):
                 move.turn = me.get_angle_to(x, y)
-            if (
+            if bonus_tick_index >= 2000 and me.get_distance_to(x, y) < me.radius + 2.0 * game.bonus_radius:
+                # Bonus hasn't appeared yet. Stay nearby.
+                return
+            if 0 < bonus_tick_index < 2000 and (
                 # Bonus has just been picked up.
                 me.get_distance_to(x, y) < me.radius or
                 # No bonus there.
                 (me.get_distance_to(x, y) < me.vision_range and not world.bonuses)
-            ) and 10 < world.tick_index % 2500 < 2000:
-                self.pick_up_bonus = 1 if self.pick_up_bonus == 0 else None
-            else:
-                self.move_by_tiles_to(me, world, game, move, x, y)
+            ):
+                self.pick_up_bonus = None
             return
 
         # Check if I'm healthy.
@@ -258,7 +258,7 @@ class MyStrategy:
     @staticmethod
     def move_by_tiles_to(me: Wizard, world: World, game: Game, move: Move, x: float, y: float) -> Tuple[float, float]:
         # We're already there?
-        if me.get_distance_to(x, y) < me.radius:
+        if me.get_distance_to(x, y) < 1.0:
             # Reached the destination.
             return x, y
         if me.get_distance_to(x, y) < DIRECT_MOVE_DISTANCE:
