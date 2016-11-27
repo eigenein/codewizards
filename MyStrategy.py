@@ -161,26 +161,22 @@ class MyStrategy:
         move.status_target_id = me.id
 
         # Bonus pick up.
-        if (me.x > 1600.0 or me.y < 2400.0) and world.tick_index % 2500 == 2000:
+        if self.pick_up_bonus is None and (me.x > 1600.0 or me.y < 2400.0) and world.tick_index % 2500 >= 2000:
             self.pick_up_bonus = 0
+            random.shuffle(BONUSES)
         if me.x < 400.0 and me.y > 3600.0:
             self.pick_up_bonus = None
         if self.pick_up_bonus is not None:
+            # noinspection PyTypeChecker
             x, y = BONUSES[self.pick_up_bonus]
             if not MyStrategy.attack_nearest_enemy(me, world, game, move, skills, attack_faction):
                 move.turn = me.get_angle_to(x, y)
-            if world.tick_index % 2500 > 1250 or world.tick_index % 2500 < 10:
-                # Bonus hasn't appeared yet. Stay nearby.
-                x += me.radius
-                y += me.radius
-                self.move_by_tiles_to(me, world, game, move, x, y)
-                return
             if (
                 # Bonus has just been picked up.
                 me.get_distance_to(x, y) < me.radius or
                 # No bonus there.
                 (me.get_distance_to(x, y) < me.vision_range and not world.bonuses)
-            ):
+            ) and 10 < world.tick_index % 2500 < 2000:
                 self.pick_up_bonus = 1 if self.pick_up_bonus == 0 else None
             else:
                 self.move_by_tiles_to(me, world, game, move, x, y)
