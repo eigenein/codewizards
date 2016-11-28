@@ -438,7 +438,7 @@ class MyStrategy:
             SkillType.FIREBALL in skills and
             allow_fireball and
             me.mana > game.fireball_manacost and
-            distance_to_unit > game.fireball_explosion_min_damage_range + me.radius
+            distance_to_unit > game.fireball_explosion_max_damage_range + me.radius
         ):
             return ActionType.FIREBALL, min_cast_distance
         if (
