@@ -14,6 +14,7 @@ from model.Faction import Faction
 from model.Game import Game
 from model.LivingUnit import LivingUnit
 from model.Minion import Minion
+from model.MinionType import MinionType
 from model.Move import Move
 from model.SkillType import SkillType
 from model.Wizard import Wizard
@@ -225,10 +226,11 @@ class MyStrategy:
     @staticmethod
     def is_in_danger(me: Wizard, world: World, game: Game, x: float, y: float, attack_faction) -> bool:
         max_life_risk = me.life - 0.25 * me.max_life
+        span = 2.0 * me.radius
         for wizard in world.wizards:
             if wizard.faction != attack_faction:
                 continue
-            if wizard.get_distance_to(x, y) > wizard.cast_range + me.radius:
+            if wizard.get_distance_to(x, y) > wizard.cast_range + span:
                 continue
             if wizard.remaining_action_cooldown_ticks > 0.5 * game.wizard_action_cooldown_ticks:
                 continue
@@ -238,16 +240,18 @@ class MyStrategy:
                 return True
             if max_life_risk < max(game.staff_damage, game.magic_missile_direct_damage, game.frost_bolt_direct_damage):
                 return True
-        if any(
-            minion.get_distance_to(x, y) < game.fetish_blowdart_attack_range + me.radius
-            for minion in world.minions
-            if minion.faction == attack_faction
-        ):
-            return True
+        for minion in world.minions:
+            distance = minion.get_distance_to(x, y)
+            if minion.faction != attack_faction:
+                continue
+            if minion.type == MinionType.FETISH_BLOWDART and distance < game.fetish_blowdart_attack_range + span:
+                return True
+            if minion.type == MinionType.ORC_WOODCUTTER and distance < game.orc_woodcutter_attack_range + span:
+                return True
         for building in world.buildings:
             if building.faction != attack_faction:
                 continue
-            if building.get_distance_to(x, y) > game.guardian_tower_attack_range + me.radius:
+            if building.get_distance_to(x, y) > game.guardian_tower_attack_range + span:
                 continue
             if max_life_risk < 0.0:
                 return True
