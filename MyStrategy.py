@@ -12,8 +12,11 @@ from model.ActionType import ActionType
 from model.CircularUnit import CircularUnit
 from model.Faction import Faction
 from model.Game import Game
+from model.LivingUnit import LivingUnit
+from model.Minion import Minion
 from model.Move import Move
 from model.SkillType import SkillType
+from model.StatusType import StatusType
 from model.Wizard import Wizard
 from model.World import World
 
@@ -357,11 +360,11 @@ class MyStrategy:
         if targets:
             # Try to attack the weakest wizard.
             target = min(targets, key=(lambda unit: unit.life))
-            if MyStrategy.attack(me, game, move, skills, target, False):
+            if MyStrategy.attack(me, game, move, skills, target, True):
                 return True
             # Try to attack the nearest wizard.
             target = min(targets, key=(lambda unit: me.get_distance_to_unit(unit)))
-            if MyStrategy.attack(me, game, move, skills, target, False):
+            if MyStrategy.attack(me, game, move, skills, target, True):
                 return True
             # Chase for it.
             MyStrategy.move_to(me, world, game, move, target.x, target.y)
@@ -375,7 +378,7 @@ class MyStrategy:
         ]
         if targets:
             target = min(targets, key=(lambda unit: me.get_distance_to_unit(unit)))
-            if MyStrategy.attack(me, game, move, skills, target, False):
+            if MyStrategy.attack(me, game, move, skills, target, True):
                 return True
             # Move closer to the building.
             MyStrategy.move_to(me, world, game, move, target.x, target.y)
@@ -403,13 +406,13 @@ class MyStrategy:
             if unit.faction == attack_faction
         ), key=(lambda unit: me.get_distance_to_unit(unit)))
         for target in targets:
-            if MyStrategy.attack(me, game, move, skills, target, False):
+            if MyStrategy.attack(me, game, move, skills, target, not isinstance(target, Minion)):
                 return True
         return False
 
     @staticmethod
-    def attack(me: Wizard, game: Game, move: Move, skills: Set, unit: CircularUnit, is_group: bool):
-        action_type, min_cast_distance = MyStrategy.get_action(me, game, skills, unit, is_group)
+    def attack(me: Wizard, game: Game, move: Move, skills: Set, unit: LivingUnit, allow_fireball: bool):
+        action_type, min_cast_distance = MyStrategy.get_action(me, game, skills, unit, allow_fireball)
         if action_type == ActionType.NONE:
             return False
         # We can cast something.
@@ -425,7 +428,7 @@ class MyStrategy:
         return True
 
     @staticmethod
-    def get_action(me: Wizard, game: Game, skills: Set[SkillType], unit: CircularUnit, is_group: bool) -> (ActionType, float):
+    def get_action(me: Wizard, game: Game, skills: Set[SkillType], unit: LivingUnit, allow_fireball: bool) -> (ActionType, float):
         distance_to_unit = me.get_distance_to_unit(unit)
         min_cast_distance = distance_to_unit - unit.radius
         if distance_to_unit < game.staff_range:
@@ -433,13 +436,18 @@ class MyStrategy:
         if distance_to_unit > me.cast_range:
             return ActionType.NONE, min_cast_distance
         if (
+            # FIXME: StatusType.BURNING not in unit.statuses and
             SkillType.FIREBALL in skills and
-            is_group and
+            allow_fireball and
             me.mana > game.fireball_manacost and
             distance_to_unit > game.fireball_explosion_min_damage_range + me.radius
         ):
             return ActionType.FIREBALL, min_cast_distance
-        if SkillType.FROST_BOLT in skills and me.mana > game.frost_bolt_manacost:
+        if (
+            # FIXME: StatusType.FROZEN not in unit.statuses and
+            SkillType.FROST_BOLT in skills and
+            me.mana > game.frost_bolt_manacost
+        ):
             return ActionType.FROST_BOLT, min_cast_distance
         if me.mana > game.magic_missile_manacost:
             return ActionType.MAGIC_MISSILE, min_cast_distance
