@@ -236,7 +236,7 @@ class MyStrategy:
                 continue
             if max_life_risk < 0.0:
                 return True
-            if SkillType.FIREBALL in wizard.skills:
+            if SkillType.FIREBALL in wizard.skills or SkillType.FROST_BOLT in wizard.skills:
                 return True
             if max_life_risk < max(game.staff_damage, game.magic_missile_direct_damage, game.frost_bolt_direct_damage):
                 return True
